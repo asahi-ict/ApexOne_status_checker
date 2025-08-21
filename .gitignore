@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+
+# Chrome debug profile
+chrome_debug_profile/
+
+# Execution results (keep only latest)
+apexone_status_check_*.png
+apexone_status_check_*.html
+apexone_widget_content_*.html
+apexone_frame_text_*.txt
+
+# But keep the log file for reference
+!apexone_status_log.csv
+
+# Windows batch files execution logs
+*.bat.log
+
+# PowerShell execution policy files
+*.ps1.log
