@@ -140,6 +140,73 @@ class ApexOneStatusChecker:
         except:
             return False
     
+    def terminate_debug_chrome(self):
+        """デバッグモードで起動したChromeプロセスを終了"""
+        print("\n🔄 デバッグモードで起動したChromeプロセスを終了中...")
+        
+        try:
+            # tasklistコマンドでChromeプロセスを確認
+            result = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq chrome.exe'], 
+                                  capture_output=True, text=True, shell=True)
+            
+            if 'chrome.exe' in result.stdout:
+                print("🔍 実行中のChromeプロセスを確認中...")
+                
+                # デバッグポートを使用しているChromeプロセスを特定
+                debug_chrome_pids = []
+                
+                # netstatコマンドでポート9222を使用しているプロセスを確認
+                try:
+                    netstat_result = subprocess.run(['netstat', '-ano'], 
+                                                  capture_output=True, text=True, shell=True)
+                    
+                    for line in netstat_result.stdout.split('\n'):
+                        if ':9222' in line and 'LISTENING' in line:
+                            # PIDを抽出
+                            parts = line.strip().split()
+                            if len(parts) >= 5:
+                                pid = parts[-1]
+                                debug_chrome_pids.append(pid)
+                                print(f"    🎯 ポート9222を使用中のプロセスPID: {pid}")
+                
+                except Exception as e:
+                    print(f"    ⚠️ netstat実行エラー: {e}")
+                
+                # デバッグポートを使用しているChromeプロセスを終了
+                if debug_chrome_pids:
+                    print(f"🚀 デバッグモードChromeプロセス {len(debug_chrome_pids)}個を終了中...")
+                    
+                    for pid in debug_chrome_pids:
+                        try:
+                            # taskkillコマンドでプロセスを終了
+                            kill_result = subprocess.run(['taskkill', '/PID', pid, '/F'], 
+                                                       capture_output=True, text=True, shell=True)
+                            
+                            if kill_result.returncode == 0:
+                                print(f"    ✅ PID {pid} のプロセスを終了しました")
+                            else:
+                                print(f"    ❌ PID {pid} のプロセス終了に失敗: {kill_result.stderr}")
+                        
+                        except Exception as e:
+                            print(f"    ❌ PID {pid} のプロセス終了中にエラー: {e}")
+                    
+                    # 少し待機してからポートの状態を確認
+                    time.sleep(2)
+                    
+                    if not self.check_debug_port():
+                        print("✅ デバッグポート9222が解放されました")
+                    else:
+                        print("⚠️ デバッグポート9222がまだ使用中です")
+                else:
+                    print("ℹ️ デバッグポート9222を使用しているChromeプロセスは見つかりませんでした")
+            else:
+                print("ℹ️ 実行中のChromeプロセスは見つかりませんでした")
+                
+        except Exception as e:
+            print(f"⚠️ デバッグChromeプロセス終了中にエラー: {e}")
+        
+        print("🏁 Chromeプロセス終了処理完了")
+    
     def launch_chrome_debug(self):
         """Chromeデバッグモードを起動"""
         print("🚀 Chromeデバッグモード起動スクリプト")
@@ -795,11 +862,11 @@ class ApexOneStatusChecker:
                 except Exception as e:
                     print(f"❌ 新しいチェック処理エラー: {e}")
                 
+                # ファイル保存用のタイムスタンプを事前に生成
+                timestamp = int(time.time())
+                
                 # 実行結果をログに記録
                 self.log_result(result)
-                
-                # ファイル保存
-                timestamp = int(time.time())
                 
                 # スクリーンショット保存
                 print("\n📸 現在のページのスクリーンショットを保存中...")
@@ -879,6 +946,9 @@ class ApexOneStatusChecker:
         
         # ログサマリーを表示
         self.show_log_summary()
+        
+        # デバッグモードで起動したChromeプロセスを終了
+        self.terminate_debug_chrome()
 
 async def main():
     """メイン関数"""
