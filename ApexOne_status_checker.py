@@ -510,6 +510,291 @@ class ApexOneStatusChecker:
                 
                 print(f"\n🎯 最終判定結果: {result}")
                 
+                # ステップ9: 新しいチェック処理（ディレクトリ→製品→ローカルフォルダ→PCVTMU53_OSCE→ステータス）
+                print(f"\n📋 ステップ9: 新しいチェック処理を開始中...")
+                print("🎯 ディレクトリ → 製品 → ローカルフォルダ → PCVTMU53_OSCE → ステータス")
+                
+                try:
+                    # ディレクトリボタンをクリック
+                    print("📋 9-1: ディレクトリボタンを探す中...")
+                    directory_found = False
+                    
+                    directory_search_terms = [
+                        'text=ディレクトリ',
+                        'span:has-text("ディレクトリ")'
+                    ]
+                    
+                    for search_term in directory_search_terms:
+                        try:
+                            directory_elements = iframe_index.locator(search_term)
+                            directory_count = await directory_elements.count()
+                            if directory_count > 0:
+                                print(f"    🎯 ディレクトリ要素発見: {search_term} -> {directory_count}個")
+                                
+                                directory_element = directory_elements.first
+                                print(f"    🚀 ディレクトリをクリック中...")
+                                await directory_element.click()
+                                print(f"    ✅ ディレクトリをクリックしました")
+                                await page.wait_for_timeout(3000)
+                                
+                                directory_found = True
+                                break
+                                
+                        except Exception as e:
+                            pass
+                    
+                    if not directory_found:
+                        print("❌ ディレクトリボタンが見つかりませんでした")
+                    else:
+                        # 製品メニューをクリック
+                        print("📋 9-2: 製品メニューを探す中...")
+                        product_menu_found = False
+                        
+                        product_menu_search_terms = [
+                            'text=製品',
+                            'span:has-text("製品")'
+                        ]
+                        
+                        for search_term in product_menu_search_terms:
+                            try:
+                                product_menu_elements = iframe_index.locator(search_term)
+                                product_menu_count = await product_menu_elements.count()
+                                if product_menu_count > 0:
+                                    print(f"    🎯 製品メニュー要素発見: {search_term} -> {product_menu_count}個")
+                                    
+                                    product_menu_element = product_menu_elements.first
+                                    print(f"    🚀 製品メニューをクリック中...")
+                                    await product_menu_element.click()
+                                    print(f"    ✅ 製品メニューをクリックしました")
+                                    await page.wait_for_timeout(3000)
+                                    
+                                    product_menu_found = True
+                                    break
+                                    
+                            except Exception as e:
+                                pass
+                        
+                        if not product_menu_found:
+                            print("❌ 製品メニューが見つかりませんでした")
+                        else:
+                            # フレーム構造の再確認
+                            print("📋 9-3: フレーム構造の再確認中...")
+                            updated_frames = page.frames
+                            print(f"🖼️ 更新後のフレーム数: {len(updated_frames)}")
+                            
+                            # leftNameフレームを探す
+                            leftname_frame = None
+                            for frame in updated_frames:
+                                if frame.name == 'leftName':
+                                    leftname_frame = frame
+                                    print(f"    🎯 leftNameフレーム発見: {frame.name}")
+                                    break
+                            
+                            if not leftname_frame:
+                                print("❌ leftNameフレームが見つかりませんでした")
+                            else:
+                                # ローカルフォルダをクリック
+                                print("📋 9-4: ローカルフォルダを探す中...")
+                                local_folder_found = False
+                                
+                                try:
+                                    local_folder_elements = leftname_frame.locator("text=ローカルフォルダ")
+                                    local_folder_count = await local_folder_elements.count()
+                                    if local_folder_count > 0:
+                                        print(f"    🎯 ローカルフォルダ要素発見: {local_folder_count}個")
+                                        
+                                        local_folder_element = local_folder_elements.first
+                                        print(f"    🚀 ローカルフォルダをクリック中...")
+                                        await local_folder_element.click()
+                                        print(f"    ✅ ローカルフォルダをクリックしました")
+                                        await page.wait_for_timeout(3000)
+                                        
+                                        local_folder_found = True
+                                        
+                                except Exception as e:
+                                    print(f"    ❌ ローカルフォルダクリックエラー: {e}")
+                                
+                                if not local_folder_found:
+                                    print("❌ ローカルフォルダが見つからないか、クリックできませんでした")
+                                else:
+                                    # PCVTMU53_OSCEをクリック
+                                    print("📋 9-5: PCVTMU53_OSCEを探す中...")
+                                    pcvtmu_found = False
+                                    
+                                    try:
+                                        pcvtmu_elements = leftname_frame.locator("text=PCVTMU53_OSCE")
+                                        pcvtmu_count = await pcvtmu_elements.count()
+                                        if pcvtmu_count > 0:
+                                            print(f"    🎯 PCVTMU53_OSCE要素発見: {pcvtmu_count}個")
+                                            
+                                            pcvtmu_element = pcvtmu_elements.first
+                                            print(f"    🚀 PCVTMU53_OSCEをクリック中...")
+                                            await pcvtmu_element.click()
+                                            print(f"    ✅ PCVTMU53_OSCEをクリックしました")
+                                            await page.wait_for_timeout(3000)
+                                            
+                                            pcvtmu_found = True
+                                            
+                                    except Exception as e:
+                                        print(f"    ❌ PCVTMU53_OSCEクリックエラー: {e}")
+                                    
+                                    if not pcvtmu_found:
+                                        print("❌ PCVTMU53_OSCEが見つからないか、クリックできませんでした")
+                                    else:
+                                        # 最終フレーム構造の確認
+                                        print("📋 9-6: 最終フレーム構造の確認中...")
+                                        final_frames = page.frames
+                                        print(f"🖼️ 最終フレーム数: {len(final_frames)}")
+                                        
+                                        # IframeNameフレームを探す
+                                        iframe_name_frame = None
+                                        for frame in final_frames:
+                                            if frame.name == 'IframeName':
+                                                iframe_name_frame = frame
+                                                print(f"    🎯 IframeNameフレーム発見: {frame.name}")
+                                                break
+                                        
+                                        if not iframe_name_frame:
+                                            print("❌ IframeNameフレームが見つかりませんでした")
+                                        else:
+                                                                                         # ウイルスパターンファイル行を抽出（virus_pattern_extractor.pyと同じ方法）
+                                             print("📋 9-7: ウイルスパターンファイル行を抽出中...")
+                                             
+                                             try:
+                                                 # virus_pattern_extractor.pyと同じ方法で要素ベース検索
+                                                 virus_pattern_elements = iframe_name_frame.locator("text=ウイルスパターンファイル")
+                                                 if await virus_pattern_elements.count() > 0:
+                                                     print(f"✅ ウイルスパターンファイル要素を発見: {await virus_pattern_elements.count()}個")
+                                                     
+                                                     # 各要素の詳細情報を取得
+                                                     virus_pattern_lines = []
+                                                     for i in range(await virus_pattern_elements.count()):
+                                                         try:
+                                                             element = virus_pattern_elements.nth(i)
+                                                             
+                                                             # 要素のテキスト内容を取得
+                                                             text_content = await element.text_content()
+                                                             print(f"   要素{i+1}: '{text_content}'")
+                                                             
+                                                             # 要素の親要素（行全体）を取得
+                                                             try:
+                                                                 # 親要素のテキスト内容を取得
+                                                                 parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
+                                                                 print(f"     親要素テキスト: '{parent_text}'")
+                                                                 
+                                                                 # 行全体の情報を保存
+                                                                 line_info = {
+                                                                     'element_text': text_content,
+                                                                     'parent_text': parent_text,
+                                                                     'element_index': i
+                                                                 }
+                                                                 virus_pattern_lines.append(line_info)
+                                                                 
+                                                                 # ログファイルに記録
+                                                                 virus_pattern_log = "virus_pattern_extraction.log"
+                                                                 with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                     f.write(f"概要ステータス結果: {result}\n")
+                                                                     f.write(f"=== ウイルスパターンファイル行 {i+1} ===\n")
+                                                                     f.write(f"要素テキスト: {text_content}\n")
+                                                                     f.write(f"行全体: {parent_text}\n")
+                                                                     f.write("-" * 50 + "\n")
+                                                                 
+                                                                 print(f"     ✅ 行全体をログファイルに保存")
+                                                                 
+                                                             except Exception as e:
+                                                                 print(f"     親要素取得エラー: {e}")
+                                                                 
+                                                                 # 代替方法：要素の周辺テキストを取得
+                                                                 try:
+                                                                     # 要素の前後のテキストを含む範囲を取得
+                                                                     surrounding_text = await element.evaluate('''
+                                                                         el => {
+                                                                             const parent = el.parentElement;
+                                                                             if (parent) {
+                                                                                 return parent.textContent || "";
+                                                                             }
+                                                                             return el.textContent || "";
+                                                                         }
+                                                                     ''')
+                                                                     print(f"     周辺テキスト: '{surrounding_text}'")
+                                                                     
+                                                                     # ログファイルに書き込み
+                                                                     with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                         f.write(f"=== ウイルスパターンファイル行 {i+1} (代替方法) ===\n")
+                                                                         f.write(f"要素テキスト: {text_content}\n")
+                                                                         f.write(f"周辺テキスト: {surrounding_text}\n")
+                                                                         f.write("-" * 50 + "\n")
+                                                                     
+                                                                     print(f"     ✅ 周辺テキストをログファイルに保存")
+                                                                     
+                                                                 except Exception as e2:
+                                                                     print(f"     周辺テキスト取得エラー: {e2}")
+                                                                     
+                                                         except Exception as e:
+                                                             print(f"   要素{i+1}: 情報取得エラー - {e}")
+                                                     
+                                                     # 抽出結果のサマリー
+                                                     print(f"\n📊 ウイルスパターンファイル行抽出結果")
+                                                     print(f"✅ 合計 {len(virus_pattern_lines)} 行を抽出しました")
+                                                     print(f"✅ ログファイル: {virus_pattern_log}")
+                                                     
+                                                     # 詳細表示
+                                                     for i, line_info in enumerate(virus_pattern_lines, 1):
+                                                         print(f"   行{i}: 要素='{line_info['element_text']}', 行全体='{line_info['parent_text']}'")
+                                                     
+                                                     # HTMLファイルも保存
+                                                     virus_pattern_html = f"virus_pattern_content_{timestamp}.html"
+                                                     with open(virus_pattern_html, 'w', encoding='utf-8') as f:
+                                                         f.write(await iframe_name_frame.content())
+                                                     print(f"💾 ウイルスパターンファイル画面のHTMLを保存: {virus_pattern_html}")
+                                                     
+                                                 else:
+                                                     print("❌ ウイルスパターンファイル要素が見つかりませんでした")
+                                                     
+                                                     # 代替方法：フレーム全体のテキストから検索
+                                                     print("🔍 代替方法: フレーム全体のテキストから検索中...")
+                                                     iframe_text = await iframe_name_frame.evaluate('() => document.body.textContent')
+                                                     
+                                                     if iframe_text:
+                                                         print(f"📄 IframeNameフレームテキスト長: {len(iframe_text)}文字")
+                                                         
+                                                         # ウイルスパターンファイル行を検索
+                                                         text_lines = []
+                                                         lines = iframe_text.split('\n')
+                                                         
+                                                         for line in lines:
+                                                             if 'ウイルスパターンファイル' in line:
+                                                                 text_lines.append(line.strip())
+                                                         
+                                                         if text_lines:
+                                                             print(f"✅ 代替方法でウイルスパターンファイル行を発見: {len(text_lines)}行")
+                                                             
+                                                             # ログファイルに記録
+                                                             with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                 f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                 f.write(f"概要ステータス結果: {result}\n")
+                                                                 f.write("=== 代替方法による抽出 ===\n")
+                                                                 for i, line in enumerate(text_lines, 1):
+                                                                     f.write(f"ウイルスパターンファイル行{i}: {line}\n")
+                                                                 f.write("-" * 50 + "\n")
+                                                             
+                                                             print(f"📝 代替方法による抽出結果をログに記録")
+                                                             
+                                                             # 詳細表示
+                                                             for i, line in enumerate(text_lines, 1):
+                                                                 print(f"   行{i}: {line}")
+                                                         else:
+                                                             print("❌ 代替方法でもウイルスパターンファイル行が見つかりませんでした")
+                                                     else:
+                                                         print("❌ IframeNameフレームのテキストを取得できませんでした")
+                                                     
+                                             except Exception as e:
+                                                 print(f"❌ ウイルスパターンファイル行抽出エラー: {e}")
+                
+                except Exception as e:
+                    print(f"❌ 新しいチェック処理エラー: {e}")
+                
                 # 実行結果をログに記録
                 self.log_result(result)
                 
@@ -549,6 +834,16 @@ class ApexOneStatusChecker:
                 print(f"   - ウィジェットフレームHTML: {widget_html_path}")
                 if 'frame_text' in locals():
                     print(f"   - フレームテキスト: {frame_text_path}")
+                
+                # 新しいチェック処理で生成されたファイルの確認
+                virus_pattern_log = "virus_pattern_extraction.log"
+                if os.path.exists(virus_pattern_log):
+                    print(f"   - ウイルスパターンファイル抽出ログ: {virus_pattern_log}")
+                
+                # ウイルスパターンファイルHTMLファイルの確認
+                virus_pattern_html_files = [f for f in os.listdir('.') if f.startswith('virus_pattern_content_') and f.endswith('.html')]
+                if virus_pattern_html_files:
+                    print(f"   - ウイルスパターンファイル画面HTML: {', '.join(virus_pattern_html_files)}")
                 
                 # 結果確認のため少し待機
                 print("\n⏳ 結果を確認するため、5秒間ブラウザを開いたままにします...")
