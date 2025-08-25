@@ -440,7 +440,11 @@ class ApexOneStatusChecker:
                 
                 overview_search_terms = [
                     'text=概要',
-                    'span:has-text("概要")'
+                    'span:has-text("概要")',
+                    'a:has-text("概要")',
+                    'button:has-text("概要")',
+                    '[title*="概要"]',
+                    '[alt*="概要"]'
                 ]
                 
                 for search_term in overview_search_terms:
@@ -464,7 +468,38 @@ class ApexOneStatusChecker:
                 
                 if not overview_found:
                     print("❌ 概要ボタンが見つかりませんでした")
-                    return
+                    print("💡 代替方法: フレーム全体から概要関連の要素を検索中...")
+                    
+                    # 代替方法：フレーム全体のテキストから概要要素を検索
+                    try:
+                        frame_text = await widget_frame.evaluate('() => document.body.textContent')
+                        if '概要' in frame_text:
+                            print("✅ フレーム内に「概要」テキストを発見")
+                            
+                            # 概要を含む要素を探す
+                            overview_elements = widget_frame.locator('*:has-text("概要")')
+                            overview_count = await overview_elements.count()
+                            if overview_count > 0:
+                                print(f"    🎯 概要要素を代替方法で発見: {overview_count}個")
+                                
+                                # 最初の概要要素をクリック
+                                overview_element = overview_elements.first
+                                print(f"    🚀 概要をクリック中...")
+                                await overview_element.click()
+                                print(f"    ✅ 概要をクリックしました")
+                                await page.wait_for_timeout(3000)
+                                
+                                overview_found = True
+                            else:
+                                print("❌ 概要要素のクリックに失敗しました")
+                        else:
+                            print("❌ フレーム内に「概要」テキストが見つかりませんでした")
+                    except Exception as e:
+                        print(f"    ❌ 代替方法での概要検索エラー: {e}")
+                    
+                    if not overview_found:
+                        print("❌ 概要ボタンの検索に完全に失敗しました")
+                        return
                 print()
                 
                 # ステップ7: 製品の接続ステータスを確認
@@ -724,11 +759,14 @@ class ApexOneStatusChecker:
                                         if not iframe_name_frame:
                                             print("❌ IframeNameフレームが見つかりませんでした")
                                         else:
-                                                                                         # ウイルスパターンファイル行を抽出（virus_pattern_extractor.pyと同じ方法）
+                                                                                         # ウイルスパターンファイル行を抽出（詳細情報取得版）
                                              print("📋 9-7: ウイルスパターンファイル行を抽出中...")
                                              
+                                             # ログファイル名を事前に定義
+                                             virus_pattern_log = "virus_pattern_extraction.log"
+                                             
                                              try:
-                                                 # virus_pattern_extractor.pyと同じ方法で要素ベース検索
+                                                 # ウイルスパターンファイル要素を検索
                                                  virus_pattern_elements = iframe_name_frame.locator("text=ウイルスパターンファイル")
                                                  if await virus_pattern_elements.count() > 0:
                                                      print(f"✅ ウイルスパターンファイル要素を発見: {await virus_pattern_elements.count()}個")
@@ -743,60 +781,96 @@ class ApexOneStatusChecker:
                                                              text_content = await element.text_content()
                                                              print(f"   要素{i+1}: '{text_content}'")
                                                              
-                                                             # 要素の親要素（行全体）を取得
+                                                             # より詳細な情報を取得するための改善された方法
                                                              try:
-                                                                 # 親要素のテキスト内容を取得
-                                                                 parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
-                                                                 print(f"     親要素テキスト: '{parent_text}'")
+                                                                 # 要素の親要素から行全体の情報を取得
+                                                                 detailed_info = await element.evaluate('''
+                                                                     el => {
+                                                                         let info = {
+                                                                             element_text: el.textContent || "",
+                                                                             parent_text: "",
+                                                                             grandparent_text: "",
+                                                                             row_text: "",
+                                                                             table_info: ""
+                                                                         };
+                                                                         
+                                                                         // 親要素（行）の情報を取得
+                                                                         if (el.parentElement) {
+                                                                             info.parent_text = el.parentElement.textContent?.trim() || "";
+                                                                             
+                                                                             // さらに上位の要素（テーブル行）の情報を取得
+                                                                             if (el.parentElement.parentElement) {
+                                                                                 info.grandparent_text = el.parentElement.parentElement.textContent?.trim() || "";
+                                                                             }
+                                                                             
+                                                                             // テーブル行全体の情報を取得
+                                                                             let row = el.closest('tr') || el.parentElement.closest('tr');
+                                                                             if (row) {
+                                                                                 info.row_text = row.textContent?.trim() || "";
+                                                                             }
+                                                                             
+                                                                             // テーブル全体の情報を取得
+                                                                             let table = el.closest('table');
+                                                                             if (table) {
+                                                                                 info.table_info = table.textContent?.trim() || "";
+                                                                             }
+                                                                         }
+                                                                         
+                                                                         return info;
+                                                                     }
+                                                                 ''')
+                                                                 
+                                                                 print(f"     詳細情報取得完了")
+                                                                 print(f"     親要素テキスト: '{detailed_info.get('parent_text', '')}'")
+                                                                 print(f"     上位要素テキスト: '{detailed_info.get('grandparent_text', '')}'")
+                                                                 print(f"     行全体テキスト: '{detailed_info.get('row_text', '')}'")
                                                                  
                                                                  # 行全体の情報を保存
                                                                  line_info = {
-                                                                     'element_text': text_content,
-                                                                     'parent_text': parent_text,
+                                                                     'element_text': detailed_info.get('element_text', ''),
+                                                                     'parent_text': detailed_info.get('parent_text', ''),
+                                                                     'grandparent_text': detailed_info.get('grandparent_text', ''),
+                                                                     'row_text': detailed_info.get('row_text', ''),
+                                                                     'table_info': detailed_info.get('table_info', ''),
                                                                      'element_index': i
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
                                                                  
                                                                  # ログファイルに記録
-                                                                 virus_pattern_log = "virus_pattern_extraction.log"
                                                                  with open(virus_pattern_log, 'a', encoding='utf-8') as f:
                                                                      f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
                                                                      f.write(f"概要ステータス結果: {result}\n")
                                                                      f.write(f"=== ウイルスパターンファイル行 {i+1} ===\n")
-                                                                     f.write(f"要素テキスト: {text_content}\n")
-                                                                     f.write(f"行全体: {parent_text}\n")
+                                                                     f.write(f"要素テキスト: {detailed_info.get('element_text', '')}\n")
+                                                                     f.write(f"親要素テキスト: {detailed_info.get('parent_text', '')}\n")
+                                                                     f.write(f"上位要素テキスト: {detailed_info.get('grandparent_text', '')}\n")
+                                                                     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
+                                                                     f.write(f"テーブル情報: {detailed_info.get('table_info', '')}\n")
                                                                      f.write("-" * 50 + "\n")
                                                                  
-                                                                 print(f"     ✅ 行全体をログファイルに保存")
+                                                                 print(f"     ✅ 詳細情報をログファイルに保存")
                                                                  
                                                              except Exception as e:
-                                                                 print(f"     親要素取得エラー: {e}")
+                                                                 print(f"     詳細情報取得エラー: {e}")
                                                                  
-                                                                 # 代替方法：要素の周辺テキストを取得
+                                                                 # フォールバック：基本的な親要素情報のみ取得
                                                                  try:
-                                                                     # 要素の前後のテキストを含む範囲を取得
-                                                                     surrounding_text = await element.evaluate('''
-                                                                         el => {
-                                                                             const parent = el.parentElement;
-                                                                             if (parent) {
-                                                                                 return parent.textContent || "";
-                                                                             }
-                                                                             return el.textContent || "";
-                                                                         }
-                                                                     ''')
-                                                                     print(f"     周辺テキスト: '{surrounding_text}'")
+                                                                     parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
+                                                                     print(f"     フォールバック: 親要素テキスト: '{parent_text}'")
                                                                      
-                                                                     # ログファイルに書き込み
+                                                                     # ログファイルに記録
                                                                      with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                         f.write(f"=== ウイルスパターンファイル行 {i+1} (代替方法) ===\n")
+                                                                         f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                         f.write(f"概要ステータス結果: {result}\n")
+                                                                         f.write(f"=== ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
                                                                          f.write(f"要素テキスト: {text_content}\n")
-                                                                         f.write(f"周辺テキスト: {surrounding_text}\n")
+                                                                         f.write(f"親要素テキスト: {parent_text}\n")
                                                                          f.write("-" * 50 + "\n")
                                                                      
-                                                                     print(f"     ✅ 周辺テキストをログファイルに保存")
+                                                                     print(f"     ✅ フォールバック情報をログファイルに保存")
                                                                      
                                                                  except Exception as e2:
-                                                                     print(f"     周辺テキスト取得エラー: {e2}")
+                                                                     print(f"     フォールバック情報取得エラー: {e2}")
                                                                      
                                                          except Exception as e:
                                                              print(f"   要素{i+1}: 情報取得エラー - {e}")
@@ -808,9 +882,13 @@ class ApexOneStatusChecker:
                                                      
                                                      # 詳細表示
                                                      for i, line_info in enumerate(virus_pattern_lines, 1):
-                                                         print(f"   行{i}: 要素='{line_info['element_text']}', 行全体='{line_info['parent_text']}'")
+                                                         print(f"   行{i}: 要素='{line_info['element_text']}'")
+                                                         if line_info.get('row_text'):
+                                                             print(f"     行全体: '{line_info['row_text']}'")
+                                                         elif line_info.get('parent_text'):
+                                                             print(f"     親要素: '{line_info['parent_text']}'")
                                                      
-                                                     print(f"✅ ウイルスパターンファイル画面のHTML取得完了")
+                                                     print(f"✅ ウイルスパターンファイル画面の詳細情報取得完了")
                                                      
                                                  else:
                                                      print("❌ ウイルスパターンファイル要素が見つかりませんでした")
