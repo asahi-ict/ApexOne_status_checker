@@ -810,11 +810,7 @@ class ApexOneStatusChecker:
                                                      for i, line_info in enumerate(virus_pattern_lines, 1):
                                                          print(f"   行{i}: 要素='{line_info['element_text']}', 行全体='{line_info['parent_text']}'")
                                                      
-                                                     # HTMLファイルも保存
-                                                     virus_pattern_html = f"virus_pattern_content_{timestamp}.html"
-                                                     with open(virus_pattern_html, 'w', encoding='utf-8') as f:
-                                                         f.write(await iframe_name_frame.content())
-                                                     print(f"💾 ウイルスパターンファイル画面のHTMLを保存: {virus_pattern_html}")
+                                                     print(f"✅ ウイルスパターンファイル画面のHTML取得完了")
                                                      
                                                  else:
                                                      print("❌ ウイルスパターンファイル要素が見つかりませんでした")
@@ -862,59 +858,23 @@ class ApexOneStatusChecker:
                 except Exception as e:
                     print(f"❌ 新しいチェック処理エラー: {e}")
                 
-                # ファイル保存用のタイムスタンプを事前に生成
-                timestamp = int(time.time())
-                
                 # 実行結果をログに記録
                 self.log_result(result)
                 
-                # スクリーンショット保存
-                print("\n📸 現在のページのスクリーンショットを保存中...")
-                screenshot_path = f"apexone_status_check_{timestamp}.png"
-                await page.screenshot(path=screenshot_path)
-                print(f"✅ スクリーンショットを保存: {screenshot_path}")
-                
-                # HTML保存
-                print("💾 現在のページのHTMLを保存中...")
-                html_path = f"apexone_status_check_{timestamp}.html"
-                with open(html_path, 'w', encoding='utf-8') as f:
-                    f.write(await page.content())
-                print(f"✅ HTMLを保存: {html_path}")
-                
-                # ウィジェットフレームHTML保存
-                widget_html_path = f"apexone_widget_content_{timestamp}.html"
-                with open(widget_html_path, 'w', encoding='utf-8') as f:
-                    f.write(await widget_frame.content())
-                print(f"✅ ウィジェットフレームのHTMLも保存: {widget_html_path}")
-                
-                # フレームテキスト保存
-                if 'frame_text' in locals():
-                    frame_text_path = f"apexone_frame_text_{timestamp}.txt"
-                    with open(frame_text_path, 'w', encoding='utf-8') as f:
-                        f.write(frame_text)
-                    print(f"✅ フレームテキストも保存: {frame_text_path}")
-                
                 print(f"\n🎉 ApexOneステータスチェックが完了しました！")
-                print(f"📁 保存されたファイル:")
-                print(f"   - スクリーンショット: {screenshot_path}")
-                print(f"   - HTML: {html_path}")
-                print(f"   - ウィジェットフレームHTML: {widget_html_path}")
-                if 'frame_text' in locals():
-                    print(f"   - フレームテキスト: {frame_text_path}")
                 
                 # 新しいチェック処理で生成されたファイルの確認
                 virus_pattern_log = "virus_pattern_extraction.log"
                 if os.path.exists(virus_pattern_log):
+                    print(f"📁 生成されたファイル:")
                     print(f"   - ウイルスパターンファイル抽出ログ: {virus_pattern_log}")
                 
-                # ウイルスパターンファイルHTMLファイルの確認
-                virus_pattern_html_files = [f for f in os.listdir('.') if f.startswith('virus_pattern_content_') and f.endswith('.html')]
-                if virus_pattern_html_files:
-                    print(f"   - ウイルスパターンファイル画面HTML: {', '.join(virus_pattern_html_files)}")
+                # ウイルスパターンファイルHTMLファイルの確認（削除済み）
+                # スクリーンショット、HTML、フレームテキストの出力は無効化されています
                 
                 # 結果確認のため少し待機
-                print("\n⏳ 結果を確認するため、5秒間ブラウザを開いたままにします...")
-                await asyncio.sleep(5)
+                print("\n⏳ 結果を確認するため、3秒間ブラウザを開いたままにします...")
+                await asyncio.sleep(3)
                 
             except Exception as e:
                 print(f"❌ ApexOneステータスチェックエラー: {e}")
