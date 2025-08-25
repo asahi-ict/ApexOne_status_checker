@@ -1,6 +1,8 @@
 @echo off
+chcp 65001 >nul
 REM ApexOne Status Checker 実行バッチファイル
 REM タスクスケジューラー用
+REM 文字化け対策: UTF-8コードページ設定
 
 echo ========================================
 echo ApexOne Status Checker 開始

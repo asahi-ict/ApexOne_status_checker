@@ -5,6 +5,39 @@ ApexOne Status Checker
 Chromeデバッグモード起動とApexOneステータスチェックを1つのスクリプトで実行
 """
 
+import sys
+import locale
+
+# 文字エンコーディング設定
+def setup_encoding():
+    """文字エンコーディング設定を初期化"""
+    try:
+        # 標準出力のエンコーディングをUTF-8に設定
+        if sys.stdout.encoding != 'utf-8':
+            sys.stdout.reconfigure(encoding='utf-8')
+        if sys.stderr.encoding != 'utf-8':
+            sys.stderr.reconfigure(encoding='utf-8')
+        
+        # ロケール設定
+        if sys.platform.startswith('win'):
+            # Windows環境での設定
+            locale.setlocale(locale.LC_ALL, 'Japanese_Japan.932')
+        else:
+            # Unix/Linux環境での設定
+            locale.setlocale(locale.LC_ALL, 'ja_JP.UTF-8')
+            
+        print("✅ 文字エンコーディング設定完了")
+        print(f"   標準出力: {sys.stdout.encoding}")
+        print(f"   標準エラー: {sys.stderr.encoding}")
+        print(f"   ロケール: {locale.getlocale()}")
+        
+    except Exception as e:
+        print(f"⚠️ 文字エンコーディング設定エラー: {e}")
+        print("💡 デフォルト設定で続行します")
+
+# 文字エンコーディング設定を実行
+setup_encoding()
+
 import asyncio
 import subprocess
 import time
@@ -84,25 +117,80 @@ class ApexOneStatusChecker:
             print(f"\n📊 ログサマリー ({self.log_file})")
             print("=" * 60)
             
+            # 列名の確認とデバッグ情報
+            if rows:
+                first_row = rows[0]
+                # BOM文字を除去した列名を表示
+                clean_column_names = [col.replace('\ufeff', '') for col in first_row.keys()]
+                print(f"🔍 CSV列名: {clean_column_names}")
+                print(f"🔍 最初の行データ: {first_row}")
+            
             # 総実行回数
             total_runs = len(rows)
             print(f"総実行回数: {total_runs}回")
             
-            # 結果別の集計
+            # 結果別の集計（安全なアクセス）
             result_counts = {}
             for row in rows:
-                result = row['結果']
-                result_counts[result] = result_counts.get(result, 0) + 1
+                try:
+                    # BOM文字を除去して列名にアクセス
+                    result = row.get('結果', '不明')
+                    if not result:
+                        # BOM文字が含まれている可能性がある場合の代替アクセス
+                        for key in row.keys():
+                            if '結果' in key.replace('\ufeff', ''):
+                                result = row[key]
+                                break
+                        if not result:
+                            result = '不明'
+                    
+                    result_counts[result] = result_counts.get(result, 0) + 1
+                except Exception as e:
+                    print(f"⚠️ 行データ処理エラー: {e}, 行: {row}")
+                    continue
             
             print("\n結果別集計:")
             for result, count in result_counts.items():
                 percentage = (count / total_runs) * 100
                 print(f"  {result}: {count}回 ({percentage:.1f}%)")
             
-            # 最新の5件を表示
+            # 最新の5件を表示（安全なアクセス）
             print(f"\n最新の実行結果 (最新5件):")
             for i, row in enumerate(rows[-5:], 1):
-                print(f"  {i}. {row['実行日時']} - {row['結果']} ({row['詳細']})")
+                try:
+                    # BOM文字を除去して列名にアクセス
+                    execution_time = row.get('実行日時', '不明')
+                    if not execution_time or execution_time == '不明':
+                        # BOM文字が含まれている可能性がある場合の代替アクセス
+                        for key in row.keys():
+                            if '実行日時' in key.replace('\ufeff', ''):
+                                execution_time = row[key]
+                                break
+                        if not execution_time:
+                            execution_time = '不明'
+                    
+                    result = row.get('結果', '不明')
+                    if not result or result == '不明':
+                        for key in row.keys():
+                            if '結果' in key.replace('\ufeff', ''):
+                                result = row[key]
+                                break
+                        if not result:
+                            result = '不明'
+                    
+                    details = row.get('詳細', '不明')
+                    if not details or details == '不明':
+                        for key in row.keys():
+                            if '詳細' in key.replace('\ufeff', ''):
+                                details = row[key]
+                                break
+                        if not details:
+                            details = '不明'
+                    
+                    print(f"  {i}. {execution_time} - {result} ({details})")
+                except Exception as e:
+                    print(f"⚠️ 行{i}の表示エラー: {e}")
+                    continue
             
             # 成功率を計算
             success_rate = (result_counts.get('OK', 0) / total_runs) * 100
@@ -110,6 +198,9 @@ class ApexOneStatusChecker:
             
         except Exception as e:
             print(f"⚠️ ログサマリー表示中にエラー: {e}")
+            print(f"💡 エラーの詳細: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
     
     def check_chrome_processes(self):
         """既存のChromeプロセスをチェック（標準ライブラリ版）"""

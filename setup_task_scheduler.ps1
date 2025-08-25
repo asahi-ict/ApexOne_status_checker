@@ -1,6 +1,8 @@
 # ApexOne Status Checker タスクスケジューラー設定スクリプト
 # 管理者権限で実行してください
 
+# 文字化け対策: メインスクリプトで対応
+
 param(
     [string]$TaskName = "ApexOne Status Checker",
     [string]$Description = "毎日10時にApexOne Status Checkerを実行",
