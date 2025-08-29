@@ -196,6 +196,58 @@ class ApexOneStatusChecker:
             success_rate = (result_counts.get('OK', 0) / total_runs) * 100
             print(f"\n成功率: {success_rate:.1f}%")
             
+            # virus_pattern_extraction.logの内容も表示
+            virus_pattern_log = "virus_pattern_extraction.log"
+            if os.path.exists(virus_pattern_log):
+                print(f"\n📋 ウイルスパターンファイル抽出ログサマリー ({virus_pattern_log})")
+                print("=" * 60)
+                try:
+                    with open(virus_pattern_log, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                    
+                    if lines:
+                        # 最新の実行結果のウイルスパターンファイル行を抽出
+                        virus_pattern_lines = []
+                        current_section = False
+                        
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith('=== ウイルスパターンファイル行') or line.startswith('ウイルスパターンファイル行'):
+                                current_section = True
+                                continue
+                            elif line.startswith('===') and line.endswith('==='):
+                                current_section = False
+                                continue
+                            elif current_section and line and not line.startswith('-'):
+                                virus_pattern_lines.append(line)
+                        
+                        if virus_pattern_lines:
+                            print(f"✅ 最新のウイルスパターンファイル情報: {len(virus_pattern_lines)}行")
+                            # 最新の5行のみ表示（重複を避けるため）
+                            unique_lines = []
+                            seen = set()
+                            for line in virus_pattern_lines:
+                                if line not in seen:
+                                    unique_lines.append(line)
+                                    seen.add(line)
+                            
+                            for i, line in enumerate(unique_lines[:5], 1):
+                                print(f"   {i}. {line}")
+                            
+                            if len(unique_lines) > 5:
+                                print(f"   ... 他 {len(unique_lines) - 5}行")
+                        else:
+                            print("   ℹ️ ウイルスパターンファイルの行が見つかりませんでした")
+                    else:
+                        print("   📝 ログファイルにデータがありません")
+                        
+                except Exception as e:
+                    print(f"   ⚠️ ウイルスパターンファイルログ読み込みエラー: {e}")
+                
+                print("=" * 60)
+            else:
+                print(f"\n📝 ウイルスパターンファイル抽出ログファイルがまだ作成されていません")
+            
         except Exception as e:
             print(f"⚠️ ログサマリー表示中にエラー: {e}")
             print(f"💡 エラーの詳細: {type(e).__name__}")
