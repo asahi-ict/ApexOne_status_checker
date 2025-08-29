@@ -42,6 +42,9 @@ Thumbs.db
 *.tmp
 *.temp
 
+# But keep specific log files for reference
+!virus_pattern_extraction.log
+
 # Chrome debug profile
 chrome_debug_profile/
 
