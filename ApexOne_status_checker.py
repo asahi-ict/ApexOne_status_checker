@@ -254,6 +254,98 @@ class ApexOneStatusChecker:
             import traceback
             traceback.print_exc()
     
+    def auto_commit_logs(self):
+        """ログファイルを自動的にコミット・プッシュ"""
+        print(f"\n📝 ログファイルの自動コミット・プッシュを開始...")
+        
+        try:
+            # ログファイルの存在確認
+            log_files = ["apexone_status_log.csv", "virus_pattern_extraction.log"]
+            existing_logs = []
+            
+            for log_file in log_files:
+                if os.path.exists(log_file):
+                    existing_logs.append(log_file)
+                    print(f"✅ ログファイル発見: {log_file}")
+                else:
+                    print(f"ℹ️ ログファイルが存在しません: {log_file}")
+            
+            if not existing_logs:
+                print("ℹ️ コミット対象のログファイルがありません")
+                return
+            
+            # Gitの状態確認
+            try:
+                git_status = subprocess.run(['git', 'status', '--porcelain'], 
+                                          capture_output=True, text=True, check=True)
+                
+                if not git_status.stdout.strip():
+                    print("ℹ️ コミット対象の変更がありません")
+                    return
+                
+                print("🔍 Gitの変更状況:")
+                for line in git_status.stdout.strip().split('\n'):
+                    if line.strip():
+                        print(f"   {line}")
+                
+            except subprocess.CalledProcessError as e:
+                print(f"⚠️ Git状態確認エラー: {e}")
+                return
+            except FileNotFoundError:
+                print("⚠️ Gitがインストールされていません")
+                return
+            
+            # ログファイルをステージング
+            print(f"\n🚀 ログファイルをステージング中...")
+            for log_file in existing_logs:
+                try:
+                    add_result = subprocess.run(['git', 'add', log_file], 
+                                              capture_output=True, text=True, check=True)
+                    print(f"✅ {log_file} をステージングしました")
+                except subprocess.CalledProcessError as e:
+                    print(f"❌ {log_file} のステージングに失敗: {e}")
+                    continue
+            
+            # コミット
+            print(f"📝 ログファイルをコミット中...")
+            try:
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                commit_message = f"docs: ログファイル更新 - {current_time}"
+                
+                commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
+                                             capture_output=True, text=True, check=True)
+                print(f"✅ コミット完了: {commit_message}")
+                print(f"   コミットハッシュ: {commit_result.stdout.strip()}")
+                
+            except subprocess.CalledProcessError as e:
+                print(f"❌ コミットに失敗: {e}")
+                if e.stderr:
+                    print(f"   エラー詳細: {e.stderr.strip()}")
+                return
+            
+            # プッシュ
+            print(f"🚀 リモートリポジトリにプッシュ中...")
+            try:
+                push_result = subprocess.run(['git', 'push'], 
+                                           capture_output=True, text=True, check=True)
+                print(f"✅ プッシュ完了")
+                
+            except subprocess.CalledProcessError as e:
+                print(f"❌ プッシュに失敗: {e}")
+                if e.stderr:
+                    print(f"   エラー詳細: {e.stderr.strip()}")
+                
+                # プッシュ失敗時は手動プッシュの案内
+                print(f"💡 手動でプッシュする場合は以下のコマンドを実行してください:")
+                print(f"   git push")
+                return
+            
+            print(f"🎉 ログファイルの自動コミット・プッシュが完了しました！")
+            
+        except Exception as e:
+            print(f"⚠️ ログファイル自動コミット・プッシュ中にエラー: {e}")
+            print(f"💡 手動でコミット・プッシュすることをお勧めします")
+    
     def check_chrome_processes(self):
         """既存のChromeプロセスをチェック（標準ライブラリ版）"""
         print("🔍 既存のChromeプロセスをチェック中...")
@@ -1127,6 +1219,9 @@ class ApexOneStatusChecker:
         
         # ログサマリーを表示
         self.show_log_summary()
+        
+        # ログファイルを自動コミット・プッシュ
+        self.auto_commit_logs()
         
         # デバッグモードで起動したChromeプロセスを終了
         self.terminate_debug_chrome()
