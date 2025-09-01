@@ -21,8 +21,9 @@ env/
 venv/
 .venv/
 
-# ログファイル
+# ログファイル（apexone_log_checker.logは除外）
 *.log
+!apexone_log_checker.log
 
 # 一時ファイル
 *.tmp
