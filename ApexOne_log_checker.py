@@ -63,7 +63,7 @@ class ApexOneLogChecker:
                 key = key_file.read()
         return key
     
-    def encrypt_credentials(self, username, password):
+    def encrypt_credentials(self, username, password, domain):
         """認証情報を暗号化して保存"""
         try:
             key = self.generate_encryption_key()
@@ -72,6 +72,7 @@ class ApexOneLogChecker:
             credentials = {
                 'username': username,
                 'password': password,
+                'domain': domain,
                 'created_at': datetime.now().isoformat()
             }
             
@@ -118,14 +119,19 @@ class ApexOneLogChecker:
         
         username = input("ユーザー名: ").strip()
         password = input("パスワード: ").strip()
+        domain = input("ドメイン (tad.asahi-np.co.jp): ").strip()
+        
+        # ドメインが空の場合はデフォルト値を設定
+        if not domain:
+            domain = "tad.asahi-np.co.jp"
         
         if not username or not password:
             print("❌ ユーザー名とパスワードは必須です")
             return None
         
         # 認証情報を暗号化して保存
-        if self.encrypt_credentials(username, password):
-            return {'username': username, 'password': password}
+        if self.encrypt_credentials(username, password, domain):
+            return {'username': username, 'password': password, 'domain': domain}
         else:
             return None
     
@@ -239,22 +245,108 @@ class ApexOneLogChecker:
                 
                 # ログインフォームの確認
                 try:
-                    username_input = await page.wait_for_selector('input[name="username"], input[type="text"]', timeout=10000)
-                    password_input = await page.wait_for_selector('input[name="password"], input[type="password"]', timeout=10000)
+                    # ドメイン選択フィールドを探す
+                    domain_selectors = [
+                        'select#labelDomain',
+                        'select[name="domainlist"]',
+                        'select[name="domain"]',
+                        'select[id*="domain"]',
+                        'select[class*="domain"]'
+                    ]
                     
-                    print("📋 ステップ2: ログイン情報を入力中...")
+                    domain_select = None
+                    for selector in domain_selectors:
+                        try:
+                            domain_select = await page.wait_for_selector(selector, timeout=5000)
+                            if domain_select:
+                                print(f"✅ ドメイン選択フィールドを発見: {selector}")
+                                break
+                        except:
+                            continue
+                    
+                    if domain_select:
+                        print("📋 ステップ2a: ドメインを選択中...")
+                        try:
+                            await domain_select.select_option(value="tad.asahi-np.co.jp")
+                            print("✅ ドメイン選択完了: tad.asahi-np.co.jp")
+                        except Exception as select_error:
+                            print(f"⚠️ ドメイン選択エラー: {select_error}")
+                            # 代替方法: テキストで選択
+                            try:
+                                await domain_select.select_option(label="tad.asahi-np.co.jp")
+                                print("✅ ドメイン選択完了（代替方法）: tad.asahi-np.co.jp")
+                            except Exception as alt_error:
+                                print(f"❌ ドメイン選択失敗: {alt_error}")
+                        await asyncio.sleep(1)
+                    else:
+                        print("⚠️ ドメイン選択フィールドが見つかりません")
+                    
+                    # ユーザー名とパスワードフィールドを探す
+                    username_input = await page.wait_for_selector('input#labelUsername, input[name="username"]', timeout=10000)
+                    password_input = await page.wait_for_selector('input#labelPassword, input[name="password"]', timeout=10000)
+                    
+                    print("📋 ステップ2b: ログイン情報を入力中...")
                     await username_input.fill(credentials['username'])
                     await password_input.fill(credentials['password'])
                     
                     # ログインボタンをクリック
-                    login_button = await page.wait_for_selector('input[type="submit"], button[type="submit"], .login-button', timeout=10000)
-                    await login_button.click()
+                    login_button_selectors = [
+                        'button#btn-signin',
+                        'button[rel="btn_signin"]',
+                        'button:has-text("ログオン")',
+                        'button:has-text("ログイン")',
+                        'input[type="submit"]',
+                        'button[type="submit"]',
+                        '.login-button'
+                    ]
+                    
+                    login_button = None
+                    for selector in login_button_selectors:
+                        try:
+                            login_button = await page.wait_for_selector(selector, timeout=5000)
+                            if login_button:
+                                print(f"✅ ログインボタンを発見: {selector}")
+                                break
+                        except:
+                            continue
+                    
+                    if login_button:
+                        print("📋 ステップ2c: ログインボタンをクリック中...")
+                        await login_button.click()
+                        print("✅ ログインボタンクリック完了")
+                    else:
+                        print("❌ ログインボタンが見つかりません")
+                        return False
                     
                     print("📋 ステップ3: ログイン処理中...")
                     await page.wait_for_load_state('networkidle', timeout=30000)
                     
+                    # ログイン後のページをデバッグ用に保存
+                    try:
+                        html_content = await page.content()
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        with open(f"debug_after_login_{timestamp}.html", "w", encoding="utf-8") as f:
+                            f.write(html_content)
+                        print(f"📄 ログイン後のHTMLを保存: debug_after_login_{timestamp}.html")
+                        
+                        # スクリーンショットも保存
+                        screenshot_path = f"after_login_{timestamp}.png"
+                        await page.screenshot(path=screenshot_path)
+                        print(f"📸 ログイン後のスクリーンショットを保存: {screenshot_path}")
+                    except Exception as debug_error:
+                        print(f"⚠️ デバッグ情報保存エラー: {debug_error}")
+                    
                 except Exception as e:
                     print(f"⚠️ ログインフォームが見つからないか、既にログイン済み: {e}")
+                    # デバッグ用にページのHTMLを保存
+                    try:
+                        html_content = await page.content()
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        with open(f"debug_login_page_{timestamp}.html", "w", encoding="utf-8") as f:
+                            f.write(html_content)
+                        print(f"📄 デバッグ用HTMLを保存: debug_login_page_{timestamp}.html")
+                    except Exception as html_error:
+                        print(f"⚠️ HTML保存エラー: {html_error}")
                 
                 print("📋 ステップ4: ログメニューにアクセス中...")
                 
@@ -262,9 +354,16 @@ class ApexOneLogChecker:
                 log_menu_selectors = [
                     'a[href*="log"]',
                     'a:has-text("ログ")',
+                    'a:has-text("Log")',
                     '.log-menu',
                     'nav a:has-text("ログ")',
-                    'ul li a:has-text("ログ")'
+                    'ul li a:has-text("ログ")',
+                    'button:has-text("ログ")',
+                    'button:has-text("Log")',
+                    '[class*="log"]',
+                    '[id*="log"]',
+                    'li a:contains("ログ")',
+                    'li a:contains("Log")'
                 ]
                 
                 log_menu = None
