@@ -5,40 +5,12 @@ ApexOne Log Checker
 OfficeScan管理コンソールにアクセスしてシステムイベントログを取得するツール
 """
 
-import sys
-import locale
 import json
 import os
 from cryptography.fernet import Fernet
 from datetime import datetime
 import asyncio
 from playwright.async_api import async_playwright
-
-# 文字エンコーディング設定
-def setup_encoding():
-    """文字エンコーディング設定を初期化"""
-    try:
-        if sys.stdout.encoding != 'utf-8':
-            sys.stdout.reconfigure(encoding='utf-8')
-        if sys.stderr.encoding != 'utf-8':
-            sys.stderr.reconfigure(encoding='utf-8')
-        
-        if sys.platform.startswith('win'):
-            locale.setlocale(locale.LC_ALL, 'Japanese_Japan.932')
-        else:
-            locale.setlocale(locale.LC_ALL, 'ja_JP.UTF-8')
-            
-        print("✅ 文字エンコーディング設定完了")
-        print(f"   標準出力: {sys.stdout.encoding}")
-        print(f"   標準エラー: {sys.stderr.encoding}")
-        print(f"   ロケール: {locale.getlocale()}")
-        
-    except Exception as e:
-        print(f"⚠️ 文字エンコーディング設定エラー: {e}")
-        print("💡 デフォルト設定で続行します")
-
-# 文字エンコーディング設定を実行
-setup_encoding()
 
 class ApexOneLogChecker:
     def __init__(self):
@@ -51,7 +23,6 @@ class ApexOneLogChecker:
         self.key_file = "encryption_key.key"
         self.debug_port = 9222
 
-        
     def generate_encryption_key(self):
         """暗号化キーを生成"""
         if not os.path.exists(self.key_file):
@@ -135,9 +106,7 @@ class ApexOneLogChecker:
             return {'username': username, 'password': password, 'domain': domain}
         else:
             return None
-    
 
-    
     async def start_chrome_debug(self):
         """Chromeデバッグモードを起動"""
         try:
@@ -308,7 +277,6 @@ class ApexOneLogChecker:
                                 print("✅ ドメイン選択完了（代替方法）: tad.asahi-np.co.jp")
                             except Exception as alt_error:
                                 print(f"❌ ドメイン選択失敗: {alt_error}")
-                        # await asyncio.sleep(1)  # 待機時間を削除
                     else:
                         print("⚠️ ドメイン選択フィールドが見つかりません")
                     
@@ -348,7 +316,7 @@ class ApexOneLogChecker:
                         
                         # ログイン処理の完了を待つ
                         print("📋 ステップ2d: ログイン処理の完了を待機中...")
-                        await asyncio.sleep(2)  # 5秒から2秒に短縮
+                        await asyncio.sleep(2)
                         
                         # ページのURLを確認
                         current_url = page.url
@@ -391,8 +359,6 @@ class ApexOneLogChecker:
                     await log_page.goto(system_event_url, wait_until='networkidle', timeout=30000)
                     print(f"✅ システムイベントログページにアクセス: {system_event_url}")
                     
-                    
-                    
                     # ログテーブルを探す
                     print("📋 ステップ6b: ログテーブルを検索中...")
                     log_table_selectors = [
@@ -433,7 +399,6 @@ class ApexOneLogChecker:
                     
                     if len(rows) > 1:  # ヘッダー行 + データ行
                         target_text = "次の役割を使用してログインしました"
-                        found_rows = []
                         
                         print(f"🔍 検索対象文言: '{target_text}'")
                         print(f"📊 検索対象行数: {len(rows)}行")
@@ -460,7 +425,6 @@ class ApexOneLogChecker:
                                 continue
                         
                         if latest_found:
-                            
                             print(f"\n" + "="*60)
                             print(f"📊 最新のログイン役割ログ")
                             print("="*60)
@@ -469,10 +433,6 @@ class ApexOneLogChecker:
                             print("="*60)
                             print(latest_found['text'])
                             print("="*60)
-                            
-                            
-                            
-                            
                             
                             return True
                         else:
@@ -484,8 +444,6 @@ class ApexOneLogChecker:
                             print(f"\n📋 最新のログ（参考）:")
                             print(latest_text[:200] + "..." if len(latest_text) > 200 else latest_text)
                             
-                            
-                            
                             return False
                     else:
                         print("❌ ログデータが見つかりません")
@@ -495,11 +453,8 @@ class ApexOneLogChecker:
                     print(f"❌ ログページアクセスエラー: {e}")
                     return False
                 
-                # 既存のフレーム検索部分は削除（直接アクセス方式に置き換え）
-                
         except Exception as e:
             print(f"❌ システムログチェックエラー: {e}")
-            
             return False
     
     async def check_system_logs(self):
@@ -535,10 +490,10 @@ class ApexOneLogChecker:
                     'timestamp': datetime.now()
                 })
             
-                            # 次のサーバーに進む前に少し待機
-                if i < len(self.servers):
-                    print("⏳ 次のサーバーに進む前に待機中...")
-                    await asyncio.sleep(2)  # 5秒から2秒に短縮
+            # 次のサーバーに進む前に少し待機
+            if i < len(self.servers):
+                print("⏳ 次のサーバーに進む前に待機中...")
+                await asyncio.sleep(2)
         
         # 結果サマリーを表示
         print(f"\n" + "="*60)
@@ -560,17 +515,12 @@ class ApexOneLogChecker:
     
     async def run(self):
         """メイン実行関数"""
-        
-        
-        
         success = await self.check_system_logs()
         
         if success:
             print("\n✅ システムイベントログの取得が完了しました")
-            
         else:
             print("\n❌ システムイベントログの取得に失敗しました")
-            
         
         print("\n" + "=" * 50)
         print("🏁 ApexOne Log Checker 終了")
