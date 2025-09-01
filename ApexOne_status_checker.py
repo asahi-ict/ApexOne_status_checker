@@ -367,7 +367,7 @@ class ApexOneStatusChecker:
         
         try:
             # ログファイルの存在確認
-            log_files = ["apexone_status_log.csv", "virus_pattern_extraction.log"]
+            log_files = ["apexone_status_log.csv", "virus_pattern_extraction.log", "apexone_log_checker.log"]
             existing_logs = []
             
             for log_file in log_files:
