@@ -455,10 +455,13 @@ class ApexOneLogChecker:
                             
                             # ログファイルに最新のログイン情報のみを記録
                             server_name = server_url.split('//')[1].split(':')[0]
-                            # 最新のログイン情報のみを抽出（最初の行のみ）
-                            log_lines = latest_found['text'].strip().split('\n')
-                            if log_lines:
-                                latest_log_line = log_lines[0]  # 最新の行のみ
+                            # テーブルから最新のログイン情報を抽出
+                            table_text = latest_found['text'].strip()
+                            # ヘッダー行を除いて最初のデータ行を取得
+                            lines = table_text.split('\n')
+                            if len(lines) >= 2:  # ヘッダー行 + データ行がある場合
+                                # ヘッダー行を除いて最初のデータ行（最新）を取得
+                                latest_log_line = lines[1]  # インデックス1が最初のデータ行
                                 log_message = f"サーバー {server_name}: {latest_log_line}"
                                 self.log_event(log_message)
                             
