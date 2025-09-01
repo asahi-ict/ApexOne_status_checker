@@ -9,7 +9,6 @@ import sys
 import locale
 import json
 import os
-import base64
 from cryptography.fernet import Fernet
 from datetime import datetime
 import asyncio
@@ -43,13 +42,15 @@ setup_encoding()
 
 class ApexOneLogChecker:
     def __init__(self):
-        self.target_url = "https://pcvtmu53:4343/officescan/"
+        # 複数のサーバーURL
+        self.servers = [
+            "https://pcvtmu53:4343/officescan/",
+            "https://pcvtmu54:4343/officescan/"
+        ]
         self.credentials_file = "secure_credentials.enc"
         self.key_file = "encryption_key.key"
-        self.log_file = "apexone_log_checker.log"
         self.debug_port = 9222
-        self.user_data_dir = r"C:\Users\1040120\chrome_debug_profile"
-        self.chrome_exe = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
         
     def generate_encryption_key(self):
         """暗号化キーを生成"""
@@ -135,17 +136,7 @@ class ApexOneLogChecker:
         else:
             return None
     
-    def log_event(self, message, level="INFO"):
-        """イベントをログファイルに記録"""
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            log_entry = f"[{timestamp}] [{level}] {message}\n"
-            
-            with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(log_entry)
-                
-        except Exception as e:
-            print(f"⚠️ ログ記録エラー: {e}")
+
     
     async def start_chrome_debug(self):
         """Chromeデバッグモードを起動"""
@@ -162,66 +153,104 @@ class ApexOneLogChecker:
                 print(f"✅ Chromeデバッグポート({self.debug_port})が既に利用可能です")
                 return True
             
-            # Chrome実行ファイルの存在確認
-            if not os.path.exists(self.chrome_exe):
-                print(f"❌ Chrome実行ファイルが見つかりません: {self.chrome_exe}")
+            # デバッグポートが利用できない場合は、新しいChromeインスタンスを起動
+            print(f"⚠️ Chromeデバッグポート({self.debug_port})が利用できません")
+            print("🔄 新しいChromeインスタンスをデバッグモードで起動中...")
+            
+            import subprocess
+            import platform
+            
+            # Chromeの実行パスを特定
+            chrome_paths = []
+            if platform.system() == "Windows":
+                chrome_paths = [
+                    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                    r"C:\Users\{}\AppData\Local\Google\Chrome\Application\chrome.exe".format(os.getenv('USERNAME')),
+                    "chrome.exe"  # PATHから検索
+                ]
+            
+            chrome_exe = None
+            for path in chrome_paths:
+                try:
+                    if os.path.exists(path):
+                        chrome_exe = path
+                        break
+                    elif path == "chrome.exe":
+                        # PATHから検索
+                        result = subprocess.run(["where", "chrome.exe"], capture_output=True, text=True)
+                        if result.returncode == 0:
+                            chrome_exe = "chrome.exe"
+                            break
+                except:
+                    continue
+            
+            if not chrome_exe:
+                print("❌ Chromeの実行ファイルが見つかりません")
+                print("💡 手動でChromeを起動してください:")
+                print(f"   chrome.exe --remote-debugging-port={self.debug_port}")
                 return False
             
-            # Chromeデバッグモードで起動
+            # デバッグ用のユーザーデータディレクトリを作成
+            debug_user_data_dir = os.path.join(os.getcwd(), "chrome_debug_profile")
+            os.makedirs(debug_user_data_dir, exist_ok=True)
+            
+            # Chromeをデバッグモードで起動
             chrome_args = [
-                self.chrome_exe,
+                chrome_exe,
                 f"--remote-debugging-port={self.debug_port}",
-                f"--user-data-dir={self.user_data_dir}",
+                f"--user-data-dir={debug_user_data_dir}",
                 "--no-first-run",
                 "--no-default-browser-check",
                 "--disable-web-security",
-                "--ignore-certificate-errors",
-                "--ignore-ssl-errors",
-                "--ignore-certificate-errors-spki-list",
-                "--disable-extensions",
-                "--disable-plugins",
-                "--disable-images",
-                "--disable-javascript",
+                "--disable-features=VizDisplayCompositor",
                 "--disable-background-timer-throttling",
                 "--disable-backgrounding-occluded-windows",
-                "--disable-renderer-backgrounding",
-                "--disable-features=TranslateUI",
-                "--disable-ipc-flooding-protection"
+                "--disable-renderer-backgrounding"
             ]
             
-            process = await asyncio.create_subprocess_exec(
-                *chrome_args,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            # Chromeの起動を待つ
-            await asyncio.sleep(3)
-            
-            # ポートが利用可能になるまで待つ
-            max_wait = 30
-            for i in range(max_wait):
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                result = sock.connect_ex(('localhost', self.debug_port))
-                sock.close()
+            try:
+                # 非同期でChromeを起動
+                process = subprocess.Popen(
+                    chrome_args,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NEW_CONSOLE if platform.system() == "Windows" else 0
+                )
                 
-                if result == 0:
-                    print(f"✅ Chromeデバッグポート({self.debug_port})が利用可能になりました")
-                    return True
+                print(f"✅ Chromeプロセスを起動しました (PID: {process.pid})")
                 
-                await asyncio.sleep(1)
-            
-            print(f"❌ Chromeデバッグポート({self.debug_port})の起動に失敗しました")
-            return False
+                # デバッグポートが利用可能になるまで待機
+                print("⏳ デバッグポートの準備を待機中...")
+                for attempt in range(30):  # 最大30秒待機
+                    await asyncio.sleep(1)
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        result = sock.connect_ex(('localhost', self.debug_port))
+                        sock.close()
+                        if result == 0:
+                            print(f"✅ Chromeデバッグポート({self.debug_port})が利用可能になりました")
+                            return True
+                    except:
+                        continue
+                
+                print("❌ デバッグポートの準備がタイムアウトしました")
+                return False
+                
+            except Exception as e:
+                print(f"❌ Chrome起動エラー: {e}")
+                print("💡 手動でChromeを起動してください:")
+                print(f"   chrome.exe --remote-debugging-port={self.debug_port}")
+                return False
             
         except Exception as e:
             print(f"❌ Chromeデバッグモード起動エラー: {e}")
             return False
     
-    async def check_system_logs(self):
-        """システムイベントログをチェック"""
+    async def check_system_logs_for_server(self, server_url):
+        """指定されたサーバーでシステムイベントログをチェック"""
         try:
-            print(f"🎯 OfficeScan管理コンソールにアクセス: {self.target_url}")
+            print(f"🎯 OfficeScan管理コンソールにアクセス: {server_url}")
             
             # 認証情報の取得
             credentials = self.decrypt_credentials()
@@ -237,11 +266,13 @@ class ApexOneLogChecker:
             async with async_playwright() as p:
                 # 既存のChromeに接続
                 browser = await p.chromium.connect_over_cdp(f"http://localhost:{self.debug_port}")
-                context = browser.contexts[0] if browser.contexts else await browser.new_context()
-                page = context.pages[0] if context.pages else await context.new_page()
+                
+                # SSL証明書の検証を無効にしたコンテキストを作成
+                context = await browser.new_context(ignore_https_errors=True)
+                page = await context.new_page()
                 
                 print("📋 ステップ1: OfficeScan管理コンソールにアクセス中...")
-                await page.goto(self.target_url, wait_until='networkidle', timeout=30000)
+                await page.goto(server_url, wait_until='networkidle', timeout=30000)
                 
                 # ログインフォームの確認
                 try:
@@ -277,7 +308,7 @@ class ApexOneLogChecker:
                                 print("✅ ドメイン選択完了（代替方法）: tad.asahi-np.co.jp")
                             except Exception as alt_error:
                                 print(f"❌ ドメイン選択失敗: {alt_error}")
-                        await asyncio.sleep(1)
+                        # await asyncio.sleep(1)  # 待機時間を削除
                     else:
                         print("⚠️ ドメイン選択フィールドが見つかりません")
                     
@@ -317,7 +348,7 @@ class ApexOneLogChecker:
                         
                         # ログイン処理の完了を待つ
                         print("📋 ステップ2d: ログイン処理の完了を待機中...")
-                        await asyncio.sleep(5)  # 5秒待機
+                        await asyncio.sleep(2)  # 5秒から2秒に短縮
                         
                         # ページのURLを確認
                         current_url = page.url
@@ -330,252 +361,40 @@ class ApexOneLogChecker:
                     print("📋 ステップ3: ログイン処理中...")
                     await page.wait_for_load_state('networkidle', timeout=30000)
                     
-                    # ログイン後のページをデバッグ用に保存
+                    # ログイン成功の確認
                     try:
                         html_content = await page.content()
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        with open(f"debug_after_login_{timestamp}.html", "w", encoding="utf-8") as f:
-                            f.write(html_content)
-                        print(f"📄 ログイン後のHTMLを保存: debug_after_login_{timestamp}.html")
-                        
-                        # スクリーンショットも保存
-                        screenshot_path = f"after_login_{timestamp}.png"
-                        await page.screenshot(path=screenshot_path)
-                        print(f"📸 ログイン後のスクリーンショットを保存: {screenshot_path}")
-                        
-                        # ログイン成功の確認
                         if "ログオン" in html_content and "form_login" in html_content:
                             print("⚠️ ログイン画面が残存しています。認証に失敗した可能性があります")
-                            # エラーメッセージを確認
-                            try:
-                                error_msg = await page.query_selector('.tm-alert .tm-msg')
-                                if error_msg:
-                                    error_text = await error_msg.inner_text()
-                                    print(f"❌ エラーメッセージ: {error_text}")
-                            except:
-                                pass
                             return False
                         else:
                             print("✅ ログイン成功を確認しました")
                             
-                    except Exception as debug_error:
-                        print(f"⚠️ デバッグ情報保存エラー: {debug_error}")
+                    except Exception as e:
+                        print(f"⚠️ ログイン確認エラー: {e}")
+                        return False
                     
                 except Exception as e:
                     print(f"⚠️ ログインフォームが見つからないか、既にログイン済み: {e}")
-                    # デバッグ用にページのHTMLを保存
-                    try:
-                        html_content = await page.content()
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        with open(f"debug_login_page_{timestamp}.html", "w", encoding="utf-8") as f:
-                            f.write(html_content)
-                        print(f"📄 デバッグ用HTMLを保存: debug_login_page_{timestamp}.html")
-                    except Exception as html_error:
-                        print(f"⚠️ HTML保存エラー: {html_error}")
-                
-                print("📋 ステップ4: メニューiframeにアクセス中...")
-                
-                # メニューiframeを探す
-                try:
-                    menu_frame = await page.wait_for_selector('iframe[name="menu"]', timeout=10000)
-                    if menu_frame:
-                        print("✅ メニューiframeを発見しました")
-                        
-                        # iframeのコンテキストに切り替え
-                        frame = await menu_frame.content_frame()
-                        if frame:
-                            print("✅ iframeコンテキストに切り替えました")
-                            
-                            # iframe内のHTMLをデバッグ用に保存
-                            try:
-                                frame_html = await frame.content()
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                with open(f"debug_menu_frame_{timestamp}.html", "w", encoding="utf-8") as f:
-                                    f.write(frame_html)
-                                print(f"📄 メニューiframeのHTMLを保存: debug_menu_frame_{timestamp}.html")
-                            except Exception as frame_debug_error:
-                                print(f"⚠️ メニューiframe HTML保存エラー: {frame_debug_error}")
-                            
-                            # ログメニューを探す
-                            print("📋 ステップ4a: ログメニューを検索中...")
-                            log_menu_selectors = [
-                                'a[href*="log"]',
-                                'a:has-text("ログ")',
-                                'a:has-text("Log")',
-                                '.log-menu',
-                                'nav a:has-text("ログ")',
-                                'ul li a:has-text("ログ")',
-                                'button:has-text("ログ")',
-                                'button:has-text("Log")',
-                                '[class*="log"]',
-                                '[id*="log"]',
-                                'li a:contains("ログ")',
-                                'li a:contains("Log")'
-                            ]
-                            
-                            log_menu = None
-                            for selector in log_menu_selectors:
-                                try:
-                                    log_menu = await frame.wait_for_selector(selector, timeout=5000)
-                                    if log_menu:
-                                        print(f"✅ ログメニューを発見: {selector}")
-                                        break
-                                except:
-                                    continue
-                            
-                            if log_menu:
-                                print("📋 ステップ4b: ログメニューをクリック中...")
-                                await log_menu.click()
-                                await frame.wait_for_load_state('networkidle', timeout=10000)
-                                print("✅ ログメニュークリック完了")
-                            else:
-                                print("❌ iframe内でログメニューが見つかりません")
-                                return False
-                        else:
-                            print("❌ iframeコンテキストの取得に失敗しました")
-                            return False
-                    else:
-                        print("❌ メニューiframeが見つかりません")
-                        return False
-                        
-                except Exception as frame_error:
-                    print(f"❌ メニューiframeアクセスエラー: {frame_error}")
                     return False
                 
-                print("📋 ステップ5: システムイベントメニューを選択中...")
+                # ログイン完了後、直接ログページにアクセス
+                print("📋 ステップ4: システムイベントログページに直接アクセス中...")
                 
-                # システムイベントメニューを探す（iframe内で検索）
-                system_event_selectors = [
-                    'span.label:has-text("システムイベント")',
-                    'span[op="12015"]',
-                    'li[op="12015"]',
-                    'span.label[op="12015"]',
-                    'a:has-text("システムイベント")',
-                    'a[href*="system"]',
-                    'a[href*="event"]',
-                    '.system-event-menu',
-                    'li a:has-text("システムイベント")'
-                ]
+                # サーバーURLからベースURLを取得してシステムイベントログURLを構築
+                base_url = server_url.rstrip('/')
+                system_event_url = f"{base_url}/console/html/cgi/cgiShowLogs.exe?id=12015"
                 
-                system_event_menu = None
-                for selector in system_event_selectors:
-                    try:
-                        system_event_menu = await frame.wait_for_selector(selector, timeout=5000)
-                        if system_event_menu:
-                            print(f"✅ システムイベントメニューを発見: {selector}")
-                            break
-                    except:
-                        continue
-                
-                if not system_event_menu:
-                    print("❌ システムイベントメニューが見つかりません")
-                    return False
-                
-                print("📋 ステップ5a: システムイベントメニューをクリック中...")
-                await system_event_menu.click()
-                await frame.wait_for_load_state('networkidle', timeout=15000)
-                print("✅ システムイベントメニュークリック完了")
-                
-                # ページ遷移を待機
-                print("📋 ステップ5b: ページ遷移を待機中...")
-                await asyncio.sleep(3)
-                
-                # メインフレームの更新を待機
                 try:
-                    main_frame = await page.wait_for_selector('iframe[name="main"]', timeout=10000)
-                    if main_frame:
-                        main_frame_content = await main_frame.content_frame()
-                        if main_frame_content:
-                            # メインフレームのURLが変更されるまで待機
-                            max_wait = 30
-                            for i in range(max_wait):
-                                current_url = main_frame_content.url
-                                if "system" in current_url or "event" in current_url or "12015" in current_url:
-                                    print(f"✅ システムイベントページに遷移しました: {current_url}")
-                                    break
-                                await asyncio.sleep(1)
-                            else:
-                                print(f"⚠️ ページ遷移が確認できません。現在のURL: {current_url}")
-                except Exception as wait_error:
-                    print(f"⚠️ ページ遷移待機エラー: {wait_error}")
-                
-                print("📋 ステップ6: システムイベントページの読み込みを待機中...")
-                await asyncio.sleep(10)  # ページ遷移を待機（時間を延長）
-                
-                # 利用可能なフレームを確認
-                try:
-                    # 利用可能なフレームを探す
-                    frame_selectors = [
-                        'iframe[name="main"]',
-                        'iframe[id="main"]',
-                        'iframe[name="osce_top"]',
-                        'iframe[id="osce_top"]',
-                        'iframe[src*="main"]',
-                        'iframe[src*="osce"]',
-                        'iframe'
-                    ]
+                    # 新しいページでシステムイベントログページにアクセス
+                    log_page = await context.new_page()
+                    await log_page.goto(system_event_url, wait_until='networkidle', timeout=30000)
+                    print(f"✅ システムイベントログページにアクセス: {system_event_url}")
                     
-                    available_frames = []
-                    for selector in frame_selectors:
-                        try:
-                            frame = await page.wait_for_selector(selector, timeout=5000)
-                            if frame:
-                                frame_content = await frame.content_frame()
-                                if frame_content:
-                                    frame_url = frame_content.url
-                                    frame_name = await frame.get_attribute('name') or await frame.get_attribute('id') or 'unknown'
-                                    available_frames.append({
-                                        'selector': selector,
-                                        'name': frame_name,
-                                        'url': frame_url,
-                                        'content': frame_content
-                                    })
-                                    print(f"✅ フレームを発見: {frame_name} - {frame_url}")
-                        except:
-                            continue
                     
-                    if not available_frames:
-                        print("❌ 利用可能なフレームが見つかりません")
-                        return False
                     
-                    # システムイベントページを含むフレームを探す
-                    target_frame = None
-                    for frame_info in available_frames:
-                        frame_url = frame_info['url']
-                        if "system" in frame_url or "event" in frame_url or "12015" in frame_url:
-                            target_frame = frame_info
-                            print(f"✅ システムイベントページを含むフレームを発見: {frame_info['name']}")
-                            break
-                    
-                    # システムイベントページが見つからない場合は、osce_topフレームを試す
-                    if not target_frame:
-                        for frame_info in available_frames:
-                            if frame_info['name'] in ['osce_top', 'main']:
-                                target_frame = frame_info
-                                print(f"✅ 代替フレームを使用: {frame_info['name']}")
-                                break
-                    
-                    if not target_frame:
-                        print("❌ 適切なフレームが見つかりません")
-                        return False
-                    
-                    main_frame_content = target_frame['content']
-                    main_url = target_frame['url']
-                    print(f"📍 選択されたフレームのURL: {main_url}")
-                    # 選択されたフレーム内のHTMLをデバッグ用に保存
-                    try:
-                        main_html = await main_frame_content.content()
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        frame_name = target_frame['name']
-                        with open(f"debug_{frame_name}_frame_{timestamp}.html", "w", encoding="utf-8") as f:
-                            f.write(main_html)
-                        print(f"📄 {frame_name}フレームのHTMLを保存: debug_{frame_name}_frame_{timestamp}.html")
-                    except Exception as main_debug_error:
-                        print(f"⚠️ {frame_name}フレームHTML保存エラー: {main_debug_error}")
-                    
-                    print("📋 ステップ6a: システムイベントログを取得中...")
-                    
-                    # ログテーブルを探す（選択されたフレーム内で検索）
+                    # ログテーブルを探す
+                    print("📋 ステップ6b: ログテーブルを検索中...")
                     log_table_selectors = [
                         'table',
                         '.log-table',
@@ -585,80 +404,173 @@ class ApexOneLogChecker:
                         'table[class*="log"]',
                         'table[class*="event"]',
                         '.data-table',
-                        '.result-table'
+                        '.result-table',
+                        'table[class*="system"]',
+                        'div[class*="log"]',
+                        'div[class*="event"]',
+                        'div[class*="system"]'
                     ]
                     
                     log_table = None
                     for selector in log_table_selectors:
                         try:
-                            log_table = await main_frame_content.wait_for_selector(selector, timeout=10000)
+                            log_table = await log_page.wait_for_selector(selector, timeout=5000)
                             if log_table:
                                 print(f"✅ ログテーブルを発見: {selector}")
                                 break
                         except:
                             continue
-                        
-                except Exception as frame_error:
-                    print(f"❌ フレームアクセスエラー: {frame_error}")
-                    return False
-                
-                if not log_table:
-                    print("❌ ログテーブルが見つかりません")
-                    return False
-                
-                # 最新のログ行を取得
-                try:
+                    
+                    if not log_table:
+                        print("❌ ログテーブルが見つかりません")
+                        return False
+                    
+                    # ログテーブル内で特定の文言を検索
+                    print("📋 ステップ7: ログテーブル内で特定の文言を検索中...")
+                    
                     # テーブルの行を取得
                     rows = await log_table.query_selector_all('tr')
                     
                     if len(rows) > 1:  # ヘッダー行 + データ行
-                        latest_row = rows[-1]  # 最新行
-                        row_text = await latest_row.inner_text()
+                        target_text = "次の役割を使用してログインしました"
+                        found_rows = []
                         
-                        print("\n" + "="*60)
-                        print("📊 最新のシステムイベントログ:")
-                        print("="*60)
-                        print(row_text)
-                        print("="*60)
+                        print(f"🔍 検索対象文言: '{target_text}'")
+                        print(f"📊 検索対象行数: {len(rows)}行")
                         
-                        # ログに記録
-                        self.log_event(f"最新システムイベントログ取得: {row_text[:100]}...")
+                        # 各行のテキストを取得して検索（最初の行が最新）
+                        latest_found = None
+                        found_count = 0
                         
-                        # スクリーンショットを保存（メインフレーム内）
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        screenshot_path = f"system_event_log_{timestamp}.png"
-                        await main_frame_content.screenshot(path=screenshot_path)
-                        print(f"📸 スクリーンショットを保存: {screenshot_path}")
+                        for i, row in enumerate(rows):
+                            try:
+                                row_text = await row.inner_text()
+                                if target_text in row_text:
+                                    found_count += 1
+                                    # 最初に見つかった行が最新なので、初回のみ設定
+                                    if latest_found is None:
+                                        latest_found = {
+                                            'index': i,
+                                            'text': row_text
+                                        }
+                                        print(f"✅ 最新の該当文言を発見: 行{i+1}")
+                                    # 2回目以降は件数のみカウント（最新は更新しない）
+                            except Exception as row_error:
+                                print(f"⚠️ 行{i+1}のテキスト取得エラー: {row_error}")
+                                continue
                         
-                        return True
+                        if latest_found:
+                            
+                            print(f"\n" + "="*60)
+                            print(f"📊 最新のログイン役割ログ")
+                            print("="*60)
+                            print(f"発見件数: {found_count}件")
+                            print(f"最新ログ: 行{latest_found['index']+1}")
+                            print("="*60)
+                            print(latest_found['text'])
+                            print("="*60)
+                            
+                            
+                            
+                            
+                            
+                            return True
+                        else:
+                            print(f"❌ '{target_text}' を含むログが見つかりませんでした")
+                            
+                            # 最新のログ行を表示（参考用）
+                            latest_row = rows[-1]
+                            latest_text = await latest_row.inner_text()
+                            print(f"\n📋 最新のログ（参考）:")
+                            print(latest_text[:200] + "..." if len(latest_text) > 200 else latest_text)
+                            
+                            
+                            
+                            return False
                     else:
                         print("❌ ログデータが見つかりません")
                         return False
                         
                 except Exception as e:
-                    print(f"❌ ログデータの取得に失敗: {e}")
+                    print(f"❌ ログページアクセスエラー: {e}")
                     return False
+                
+                # 既存のフレーム検索部分は削除（直接アクセス方式に置き換え）
                 
         except Exception as e:
             print(f"❌ システムログチェックエラー: {e}")
-            self.log_event(f"エラー: {e}", "ERROR")
+            
             return False
+    
+    async def check_system_logs(self):
+        """全てのサーバーでシステムイベントログをチェック"""
+        print("🚀 ApexOne Log Checker 開始")
+        print("="*50)
+        
+        all_results = []
+        
+        for i, server_url in enumerate(self.servers, 1):
+            print(f"\n📊 サーバー {i}/{len(self.servers)}: {server_url}")
+            print("-" * 50)
+            
+            try:
+                result = await self.check_system_logs_for_server(server_url)
+                all_results.append({
+                    'server': server_url,
+                    'success': result,
+                    'timestamp': datetime.now()
+                })
+                
+                if result:
+                    print(f"✅ サーバー {i} の処理が完了しました")
+                else:
+                    print(f"❌ サーバー {i} の処理に失敗しました")
+                    
+            except Exception as e:
+                print(f"❌ サーバー {i} でエラーが発生: {e}")
+                all_results.append({
+                    'server': server_url,
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now()
+                })
+            
+                            # 次のサーバーに進む前に少し待機
+                if i < len(self.servers):
+                    print("⏳ 次のサーバーに進む前に待機中...")
+                    await asyncio.sleep(2)  # 5秒から2秒に短縮
+        
+        # 結果サマリーを表示
+        print(f"\n" + "="*60)
+        print("📊 全サーバー処理結果サマリー")
+        print("="*60)
+        
+        success_count = 0
+        for i, result in enumerate(all_results, 1):
+            server_name = result['server'].split('//')[1].split(':')[0]
+            status = "✅ 成功" if result['success'] else "❌ 失敗"
+            print(f"サーバー {i} ({server_name}): {status}")
+            if result['success']:
+                success_count += 1
+        
+        print(f"\n成功: {success_count}/{len(self.servers)} サーバー")
+        print("="*60)
+        
+        return success_count > 0
     
     async def run(self):
         """メイン実行関数"""
-        print("🚀 ApexOne Log Checker 開始")
-        print("=" * 50)
         
-        self.log_event("ApexOne Log Checker 開始")
+        
         
         success = await self.check_system_logs()
         
         if success:
             print("\n✅ システムイベントログの取得が完了しました")
-            self.log_event("システムイベントログ取得完了")
+            
         else:
             print("\n❌ システムイベントログの取得に失敗しました")
-            self.log_event("システムイベントログ取得失敗", "ERROR")
+            
         
         print("\n" + "=" * 50)
         print("🏁 ApexOne Log Checker 終了")

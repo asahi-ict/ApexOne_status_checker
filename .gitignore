@@ -1,64 +1,29 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# デバッグファイル
+debug_*.html
+debug_*.png
+after_login_*.png
+login_role_log_*.png
 
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv/
+# 認証情報ファイル
+secure_credentials.enc
+encryption_key.key
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs and temporary files
-*.log
-*.tmp
-*.temp
-
-# But keep specific log files for reference
-!virus_pattern_extraction.log
-
-# Chrome debug profile
+# Chromeデバッグプロファイル
 chrome_debug_profile/
 
-# Execution results (keep only latest)
-apexone_status_check_*.png
-apexone_status_check_*.html
-apexone_widget_content_*.html
-apexone_frame_text_*.txt
+# Python関連
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
 
-# But keep the log file for reference
-!apexone_status_log.csv
+# ログファイル
+*.log
 
-# Windows batch files execution logs
-*.bat.log
-
-# PowerShell execution policy files
-*.ps1.log
+# 一時ファイル
+*.tmp
+*.temp
