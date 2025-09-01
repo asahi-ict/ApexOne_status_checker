@@ -654,7 +654,10 @@ class ApexOneStatusChecker:
                 # Chromeデバッグモードに接続
                 print("🔍 PlaywrightでChromeデバッグモードに接続中...")
                 browser = await p.chromium.connect_over_cdp(f"http://localhost:{self.debug_port}")
-                page = await browser.new_page()
+                
+                # SSL証明書の検証を無効にしたコンテキストを作成
+                context = await browser.new_context(ignore_https_errors=True)
+                page = await context.new_page()
                 print("✅ Chromeデバッグモードに接続成功！")
                 print("✅ 新しいページを作成しました")
                 print()
