@@ -59,7 +59,7 @@ class ApexOneStatusChecker:
             'PCVTMU54_OSCE', 'PCVTMU53_OSCE', 'PCVTMU54_TMSM', 'PCVTMU53_TMSM'
         ]
         self.status_keywords = ['有効', '無効', '接続なし', '接続中', 'エラー', '警告']
-        self.log_file = "apexone_status_log.csv"
+        self.log_file = "apexone_integrated.log"
         
         # ログチェック機能用の設定
         self.log_check_servers = [
@@ -68,42 +68,32 @@ class ApexOneStatusChecker:
         ]
         self.credentials_file = "secure_credentials.enc"
         self.key_file = "encryption_key.key"
-        self.log_checker_file = "apexone_log_checker.log"
+        self.log_checker_file = "apexone_integrated.log"
         
     def log_result(self, result, details=""):
-        """実行結果をログファイルに記録"""
+        """実行結果を統合ログファイルに記録"""
         try:
-            # ログファイルが存在しない場合はヘッダーを作成
-            file_exists = os.path.exists(self.log_file)
+            # 現在の日時を取得
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            with open(self.log_file, 'a', newline='', encoding='utf-8') as csvfile:
-                fieldnames = ['実行日時', '結果', '詳細', '対象製品数', '有効製品数']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                
-                if not file_exists:
-                    writer.writeheader()
-                
-                # 現在の日時を取得
-                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # 詳細情報を設定
-                if result == "OK":
-                    details = "全製品が有効"
-                elif result == "NG":
-                    details = "一部の製品が無効"
-                elif result == "INSUFFICIENT_DATA":
-                    details = "データ不足"
-                else:
-                    details = details or "不明"
-                
-                # ログに記録
-                writer.writerow({
-                    '実行日時': current_time,
-                    '結果': result,
-                    '詳細': details,
-                    '対象製品数': len(self.target_products),
-                    '有効製品数': details.count('有効') if '有効' in details else 0
-                })
+            # 詳細情報を設定
+            if result == "OK":
+                details = "全製品が有効"
+            elif result == "NG":
+                details = "一部の製品が無効"
+            elif result == "INSUFFICIENT_DATA":
+                details = "データ不足"
+            else:
+                details = details or "不明"
+            
+            # 統合ログファイルに記録
+            with open(self.log_file, 'a', encoding='utf-8') as f:
+                f.write(f"\n=== {current_time} ===\n")
+                f.write(f"ステータスチェック結果: {result}\n")
+                f.write(f"詳細: {details}\n")
+                f.write(f"対象製品数: {len(self.target_products)}\n")
+                f.write(f"有効製品数: {details.count('有効') if '有効' in details else 0}\n")
+                f.write("-" * 50 + "\n")
                 
             print(f"📝 実行ログを記録しました: {self.log_file}")
             
@@ -207,153 +197,102 @@ class ApexOneStatusChecker:
             return None
     
     def show_log_summary(self):
-        """ログファイルのサマリーを表示"""
+        """統合ログファイルのサマリーを表示"""
         try:
             if not os.path.exists(self.log_file):
-                print("📝 ログファイルがまだ作成されていません")
+                print("📝 統合ログファイルがまだ作成されていません")
                 return
             
-            with open(self.log_file, 'r', encoding='utf-8') as csvfile:
-                reader = csv.DictReader(csvfile)
-                rows = list(reader)
-                
-            if not rows:
-                print("📝 ログファイルにデータがありません")
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                lines = content.split('\n')
+            
+            if not lines:
+                print("📝 統合ログファイルにデータがありません")
                 return
             
-            print(f"\n📊 ログサマリー ({self.log_file})")
+            print(f"\n📊 統合ログファイルサマリー ({self.log_file})")
             print("=" * 60)
             
-            # 列名の確認とデバッグ情報
-            if rows:
-                first_row = rows[0]
-                # BOM文字を除去した列名を表示
-                clean_column_names = [col.replace('\ufeff', '') for col in first_row.keys()]
-                print(f"🔍 CSV列名: {clean_column_names}")
-                print(f"🔍 最初の行データ: {first_row}")
+            # ステータスチェック結果を抽出
+            status_checks = []
+            log_checks = []
+            virus_patterns = []
             
-            # 総実行回数
-            total_runs = len(rows)
-            print(f"総実行回数: {total_runs}回")
+            current_section = None
+            for line in lines:
+                line = line.strip()
+                if line.startswith('=== ') and line.endswith(' ==='):
+                    # 新しいセクションの開始
+                    if 'ステータスチェック結果' in content:
+                        current_section = 'status'
+                    elif 'ログチェック' in content:
+                        current_section = 'log'
+                    elif 'ウイルスパターンファイル' in content:
+                        current_section = 'virus'
+                elif line.startswith('ステータスチェック結果:'):
+                    status_checks.append(line)
+                elif line.startswith('サーバー pcvtmu'):
+                    log_checks.append(line)
+                elif line.startswith('要素テキスト: ウイルスパターンファイル'):
+                    virus_patterns.append(line)
             
-            # 結果別の集計（安全なアクセス）
-            result_counts = {}
-            for row in rows:
-                try:
-                    # BOM文字を除去して列名にアクセス
-                    result = row.get('結果', '不明')
-                    if not result:
-                        # BOM文字が含まれている可能性がある場合の代替アクセス
-                        for key in row.keys():
-                            if '結果' in key.replace('\ufeff', ''):
-                                result = row[key]
-                                break
-                        if not result:
-                            result = '不明'
-                    
-                    result_counts[result] = result_counts.get(result, 0) + 1
-                except Exception as e:
-                    print(f"⚠️ 行データ処理エラー: {e}, 行: {row}")
-                    continue
+            # 統計情報を表示
+            print(f"📈 ステータスチェック実行回数: {len(status_checks)}回")
+            print(f"📋 ログチェック実行回数: {len(log_checks)}回")
+            print(f"🦠 ウイルスパターン抽出実行回数: {len(virus_patterns)}回")
             
-            print("\n結果別集計:")
-            for result, count in result_counts.items():
-                percentage = (count / total_runs) * 100
-                print(f"  {result}: {count}回 ({percentage:.1f}%)")
+            # 最新の実行結果を表示
+            print(f"\n📅 最新実行状況:")
+            if status_checks:
+                latest_status = status_checks[-1]
+                print(f"  - ステータスチェック: {latest_status}")
+            if log_checks:
+                latest_log = log_checks[-1]
+                print(f"  - ログチェック: {latest_log}")
+            if virus_patterns:
+                latest_virus = virus_patterns[-1]
+                print(f"  - ウイルスパターン抽出: {latest_virus}")
             
-            # 最新の5件を表示（安全なアクセス）
-            print(f"\n最新の実行結果 (最新5件):")
-            for i, row in enumerate(rows[-5:], 1):
-                try:
-                    # BOM文字を除去して列名にアクセス
-                    execution_time = row.get('実行日時', '不明')
-                    if not execution_time or execution_time == '不明':
-                        # BOM文字が含まれている可能性がある場合の代替アクセス
-                        for key in row.keys():
-                            if '実行日時' in key.replace('\ufeff', ''):
-                                execution_time = row[key]
-                                break
-                        if not execution_time:
-                            execution_time = '不明'
-                    
-                    result = row.get('結果', '不明')
-                    if not result or result == '不明':
-                        for key in row.keys():
-                            if '結果' in key.replace('\ufeff', ''):
-                                result = row[key]
-                                break
-                        if not result:
-                            result = '不明'
-                    
-                    details = row.get('詳細', '不明')
-                    if not details or details == '不明':
-                        for key in row.keys():
-                            if '詳細' in key.replace('\ufeff', ''):
-                                details = row[key]
-                                break
-                        if not details:
-                            details = '不明'
-                    
-                    print(f"  {i}. {execution_time} - {result} ({details})")
-                except Exception as e:
-                    print(f"⚠️ 行{i}の表示エラー: {e}")
-                    continue
+            # 成功率を計算（ステータスチェックのOK率）
+            ok_count = sum(1 for check in status_checks if 'OK' in check)
+            total_status = len(status_checks)
+            if total_status > 0:
+                success_rate = (ok_count / total_status) * 100
+                print(f"\n📊 ステータスチェック成功率: {success_rate:.1f}% ({ok_count}/{total_status})")
             
-            # 成功率を計算
-            success_rate = (result_counts.get('OK', 0) / total_runs) * 100
-            print(f"\n成功率: {success_rate:.1f}%")
+            print("=" * 60)
             
-            # virus_pattern_extraction.logの内容も表示
-            virus_pattern_log = "virus_pattern_extraction.log"
-            if os.path.exists(virus_pattern_log):
-                print(f"\n📋 ウイルスパターンファイル抽出ログサマリー ({virus_pattern_log})")
+        except Exception as e:
+            print(f"⚠️ 統合ログファイルサマリー表示中にエラー: {e}")
+            print(f"💡 エラーの詳細: {type(e).__name__}")
+            import traceback
+            traceback.print_exc()
+            
+            # 統合ログファイルの内容を表示
+            integrated_log = "apexone_integrated.log"
+            if os.path.exists(integrated_log):
+                print(f"\n📋 統合ログファイルサマリー ({integrated_log})")
                 print("=" * 60)
                 try:
-                    with open(virus_pattern_log, 'r', encoding='utf-8') as f:
+                    with open(integrated_log, 'r', encoding='utf-8') as f:
                         lines = f.readlines()
                     
                     if lines:
-                        # 最新の実行結果のウイルスパターンファイル行を抽出
-                        virus_pattern_lines = []
-                        current_section = False
-                        
-                        for line in lines:
-                            line = line.strip()
-                            if line.startswith('=== ウイルスパターンファイル行') or line.startswith('ウイルスパターンファイル行'):
-                                current_section = True
-                                continue
-                            elif line.startswith('===') and line.endswith('==='):
-                                current_section = False
-                                continue
-                            elif current_section and line and not line.startswith('-'):
-                                virus_pattern_lines.append(line)
-                        
-                        if virus_pattern_lines:
-                            print(f"✅ 最新のウイルスパターンファイル情報: {len(virus_pattern_lines)}行")
-                            # 最新の5行のみ表示（重複を避けるため）
-                            unique_lines = []
-                            seen = set()
-                            for line in virus_pattern_lines:
-                                if line not in seen:
-                                    unique_lines.append(line)
-                                    seen.add(line)
-                            
-                            for i, line in enumerate(unique_lines[:5], 1):
-                                print(f"   {i}. {line}")
-                            
-                            if len(unique_lines) > 5:
-                                print(f"   ... 他 {len(unique_lines) - 5}行")
-                        else:
-                            print("   ℹ️ ウイルスパターンファイルの行が見つかりませんでした")
+                        # 最新の実行結果を表示
+                        recent_lines = [line.strip() for line in lines if line.strip()][-20:]
+                        print(f"✅ 統合ログファイル情報: {len(recent_lines)}行")
+                        for i, line in enumerate(recent_lines, 1):
+                            print(f"   {i}. {line}")
                     else:
                         print("   📝 ログファイルにデータがありません")
                         
                 except Exception as e:
-                    print(f"   ⚠️ ウイルスパターンファイルログ読み込みエラー: {e}")
+                    print(f"   ⚠️ 統合ログファイル読み込みエラー: {e}")
                 
                 print("=" * 60)
             else:
-                print(f"\n📝 ウイルスパターンファイル抽出ログファイルがまだ作成されていません")
+                print(f"\n📝 統合ログファイルがまだ作成されていません")
             
         except Exception as e:
             print(f"⚠️ ログサマリー表示中にエラー: {e}")
@@ -367,7 +306,7 @@ class ApexOneStatusChecker:
         
         try:
             # ログファイルの存在確認
-            log_files = ["apexone_status_log.csv", "virus_pattern_extraction.log", "apexone_log_checker.log"]
+            log_files = ["apexone_integrated.log"]
             existing_logs = []
             
             for log_file in log_files:
@@ -1108,7 +1047,7 @@ class ApexOneStatusChecker:
                                              print("📋 9-7: ウイルスパターンファイル行を抽出中...")
                                              
                                              # ログファイル名を事前に定義
-                                             virus_pattern_log = "virus_pattern_extraction.log"
+                                             virus_pattern_log = "apexone_integrated.log"
                                              
                                              try:
                                                  # ウイルスパターンファイル要素を検索
@@ -1181,7 +1120,7 @@ class ApexOneStatusChecker:
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
                                                                  
-                                                                 # ログファイルに記録
+                                                                 # 統合ログファイルに記録
                                                                  with open(virus_pattern_log, 'a', encoding='utf-8') as f:
                                                                      f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
                                                                      f.write(f"概要ステータス結果: {result}\n")
@@ -1203,7 +1142,7 @@ class ApexOneStatusChecker:
                                                                      parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
                                                                      print(f"     フォールバック: 親要素テキスト: '{parent_text}'")
                                                                      
-                                                                     # ログファイルに記録
+                                                                     # 統合ログファイルに記録
                                                                      with open(virus_pattern_log, 'a', encoding='utf-8') as f:
                                                                          f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
                                                                          f.write(f"概要ステータス結果: {result}\n")
@@ -1223,7 +1162,7 @@ class ApexOneStatusChecker:
                                                      # 抽出結果のサマリー
                                                      print(f"\n📊 ウイルスパターンファイル行抽出結果")
                                                      print(f"✅ 合計 {len(virus_pattern_lines)} 行を抽出しました")
-                                                     print(f"✅ ログファイル: {virus_pattern_log}")
+                                                     print(f"✅ 統合ログファイル: {virus_pattern_log}")
                                                      
                                                      # 詳細表示
                                                      for i, line_info in enumerate(virus_pattern_lines, 1):
@@ -1287,10 +1226,10 @@ class ApexOneStatusChecker:
                 print(f"\n🎉 ApexOneステータスチェックが完了しました！")
                 
                 # 新しいチェック処理で生成されたファイルの確認
-                virus_pattern_log = "virus_pattern_extraction.log"
+                virus_pattern_log = "apexone_integrated.log"
                 if os.path.exists(virus_pattern_log):
                     print(f"📁 生成されたファイル:")
-                    print(f"   - ウイルスパターンファイル抽出ログ: {virus_pattern_log}")
+                    print(f"   - 統合ログファイル: {virus_pattern_log}")
                 
                 # ウイルスパターンファイルHTMLファイルの確認（削除済み）
                 # スクリーンショット、HTML、フレームテキストの出力は無効化されています
