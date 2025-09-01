@@ -22,6 +22,19 @@ class ApexOneLogChecker:
         self.credentials_file = "secure_credentials.enc"
         self.key_file = "encryption_key.key"
         self.debug_port = 9222
+        self.log_file = "apexone_log_checker.log"
+
+    def log_event(self, message):
+        """ログイベントをファイルに記録"""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_entry = f"[{timestamp}] {message}\n"
+            
+            with open(self.log_file, 'a', encoding='utf-8') as f:
+                f.write(log_entry)
+                
+        except Exception as e:
+            print(f"⚠️ ログファイル書き込みエラー: {e}")
 
     def generate_encryption_key(self):
         """暗号化キーを生成"""
@@ -220,16 +233,19 @@ class ApexOneLogChecker:
         """指定されたサーバーでシステムイベントログをチェック"""
         try:
             print(f"🎯 OfficeScan管理コンソールにアクセス: {server_url}")
+            self.log_event(f"サーバーアクセス開始: {server_url}")
             
             # 認証情報の取得
             credentials = self.decrypt_credentials()
             if not credentials:
                 credentials = self.get_manual_credentials()
                 if not credentials:
+                    self.log_event(f"認証情報取得失敗: {server_url}")
                     return False
             
             # Chromeデバッグモードを起動
             if not await self.start_chrome_debug():
+                self.log_event(f"Chromeデバッグ起動失敗: {server_url}")
                 return False
             
             async with async_playwright() as p:
@@ -324,6 +340,7 @@ class ApexOneLogChecker:
                         
                     else:
                         print("❌ ログインボタンが見つかりません")
+                        self.log_event(f"ログインボタン未発見: {server_url}")
                         return False
                     
                     print("📋 ステップ3: ログイン処理中...")
@@ -334,6 +351,7 @@ class ApexOneLogChecker:
                         html_content = await page.content()
                         if "ログオン" in html_content and "form_login" in html_content:
                             print("⚠️ ログイン画面が残存しています。認証に失敗した可能性があります")
+                            self.log_event(f"ログイン失敗: {server_url}")
                             return False
                         else:
                             print("✅ ログイン成功を確認しました")
@@ -389,6 +407,7 @@ class ApexOneLogChecker:
                     
                     if not log_table:
                         print("❌ ログテーブルが見つかりません")
+                        self.log_event(f"ログテーブル未発見: {server_url}")
                         return False
                     
                     # ログテーブル内で特定の文言を検索
@@ -434,9 +453,15 @@ class ApexOneLogChecker:
                             print(latest_found['text'])
                             print("="*60)
                             
+                            # ログファイルに最新のログイン情報のみを記録
+                            server_name = server_url.split('//')[1].split(':')[0]
+                            log_message = f"サーバー {server_name}: {latest_found['text'].strip()}"
+                            self.log_event(log_message)
+                            
                             return True
                         else:
                             print(f"❌ '{target_text}' を含むログが見つかりませんでした")
+                            self.log_event(f"対象ログ未発見: {server_url}")
                             
                             # 最新のログ行を表示（参考用）
                             latest_row = rows[-1]
@@ -447,20 +472,24 @@ class ApexOneLogChecker:
                             return False
                     else:
                         print("❌ ログデータが見つかりません")
+                        self.log_event(f"ログデータなし: {server_url}")
                         return False
                         
                 except Exception as e:
                     print(f"❌ ログページアクセスエラー: {e}")
+                    self.log_event(f"ログページアクセスエラー: {server_url} - {e}")
                     return False
                 
         except Exception as e:
             print(f"❌ システムログチェックエラー: {e}")
+            self.log_event(f"システムログチェックエラー: {server_url} - {e}")
             return False
     
     async def check_system_logs(self):
         """全てのサーバーでシステムイベントログをチェック"""
         print("🚀 ApexOne Log Checker 開始")
         print("="*50)
+        self.log_event("ApexOne Log Checker 開始")
         
         all_results = []
         
@@ -511,6 +540,9 @@ class ApexOneLogChecker:
         print(f"\n成功: {success_count}/{len(self.servers)} サーバー")
         print("="*60)
         
+        # 結果サマリーをログに記録
+        self.log_event(f"処理完了: 成功 {success_count}/{len(self.servers)} サーバー")
+        
         return success_count > 0
     
     async def run(self):
@@ -519,11 +551,14 @@ class ApexOneLogChecker:
         
         if success:
             print("\n✅ システムイベントログの取得が完了しました")
+            self.log_event("システムイベントログの取得が完了しました")
         else:
             print("\n❌ システムイベントログの取得に失敗しました")
+            self.log_event("システムイベントログの取得に失敗しました")
         
         print("\n" + "=" * 50)
         print("🏁 ApexOne Log Checker 終了")
+        self.log_event("ApexOne Log Checker 終了")
 
 async def main():
     """メイン関数"""
