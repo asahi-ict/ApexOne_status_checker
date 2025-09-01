@@ -314,6 +314,15 @@ class ApexOneLogChecker:
                         print("📋 ステップ2c: ログインボタンをクリック中...")
                         await login_button.click()
                         print("✅ ログインボタンクリック完了")
+                        
+                        # ログイン処理の完了を待つ
+                        print("📋 ステップ2d: ログイン処理の完了を待機中...")
+                        await asyncio.sleep(5)  # 5秒待機
+                        
+                        # ページのURLを確認
+                        current_url = page.url
+                        print(f"📍 現在のURL: {current_url}")
+                        
                     else:
                         print("❌ ログインボタンが見つかりません")
                         return False
@@ -333,6 +342,22 @@ class ApexOneLogChecker:
                         screenshot_path = f"after_login_{timestamp}.png"
                         await page.screenshot(path=screenshot_path)
                         print(f"📸 ログイン後のスクリーンショットを保存: {screenshot_path}")
+                        
+                        # ログイン成功の確認
+                        if "ログオン" in html_content and "form_login" in html_content:
+                            print("⚠️ ログイン画面が残存しています。認証に失敗した可能性があります")
+                            # エラーメッセージを確認
+                            try:
+                                error_msg = await page.query_selector('.tm-alert .tm-msg')
+                                if error_msg:
+                                    error_text = await error_msg.inner_text()
+                                    print(f"❌ エラーメッセージ: {error_text}")
+                            except:
+                                pass
+                            return False
+                        else:
+                            print("✅ ログイン成功を確認しました")
+                            
                     except Exception as debug_error:
                         print(f"⚠️ デバッグ情報保存エラー: {debug_error}")
                     
@@ -348,44 +373,83 @@ class ApexOneLogChecker:
                     except Exception as html_error:
                         print(f"⚠️ HTML保存エラー: {html_error}")
                 
-                print("📋 ステップ4: ログメニューにアクセス中...")
+                print("📋 ステップ4: メニューiframeにアクセス中...")
                 
-                # ログメニューを探す
-                log_menu_selectors = [
-                    'a[href*="log"]',
-                    'a:has-text("ログ")',
-                    'a:has-text("Log")',
-                    '.log-menu',
-                    'nav a:has-text("ログ")',
-                    'ul li a:has-text("ログ")',
-                    'button:has-text("ログ")',
-                    'button:has-text("Log")',
-                    '[class*="log"]',
-                    '[id*="log"]',
-                    'li a:contains("ログ")',
-                    'li a:contains("Log")'
-                ]
-                
-                log_menu = None
-                for selector in log_menu_selectors:
-                    try:
-                        log_menu = await page.wait_for_selector(selector, timeout=5000)
-                        if log_menu:
-                            break
-                    except:
-                        continue
-                
-                if not log_menu:
-                    print("❌ ログメニューが見つかりません")
+                # メニューiframeを探す
+                try:
+                    menu_frame = await page.wait_for_selector('iframe[name="menu"]', timeout=10000)
+                    if menu_frame:
+                        print("✅ メニューiframeを発見しました")
+                        
+                        # iframeのコンテキストに切り替え
+                        frame = await menu_frame.content_frame()
+                        if frame:
+                            print("✅ iframeコンテキストに切り替えました")
+                            
+                            # iframe内のHTMLをデバッグ用に保存
+                            try:
+                                frame_html = await frame.content()
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                with open(f"debug_menu_frame_{timestamp}.html", "w", encoding="utf-8") as f:
+                                    f.write(frame_html)
+                                print(f"📄 メニューiframeのHTMLを保存: debug_menu_frame_{timestamp}.html")
+                            except Exception as frame_debug_error:
+                                print(f"⚠️ メニューiframe HTML保存エラー: {frame_debug_error}")
+                            
+                            # ログメニューを探す
+                            print("📋 ステップ4a: ログメニューを検索中...")
+                            log_menu_selectors = [
+                                'a[href*="log"]',
+                                'a:has-text("ログ")',
+                                'a:has-text("Log")',
+                                '.log-menu',
+                                'nav a:has-text("ログ")',
+                                'ul li a:has-text("ログ")',
+                                'button:has-text("ログ")',
+                                'button:has-text("Log")',
+                                '[class*="log"]',
+                                '[id*="log"]',
+                                'li a:contains("ログ")',
+                                'li a:contains("Log")'
+                            ]
+                            
+                            log_menu = None
+                            for selector in log_menu_selectors:
+                                try:
+                                    log_menu = await frame.wait_for_selector(selector, timeout=5000)
+                                    if log_menu:
+                                        print(f"✅ ログメニューを発見: {selector}")
+                                        break
+                                except:
+                                    continue
+                            
+                            if log_menu:
+                                print("📋 ステップ4b: ログメニューをクリック中...")
+                                await log_menu.click()
+                                await frame.wait_for_load_state('networkidle', timeout=10000)
+                                print("✅ ログメニュークリック完了")
+                            else:
+                                print("❌ iframe内でログメニューが見つかりません")
+                                return False
+                        else:
+                            print("❌ iframeコンテキストの取得に失敗しました")
+                            return False
+                    else:
+                        print("❌ メニューiframeが見つかりません")
+                        return False
+                        
+                except Exception as frame_error:
+                    print(f"❌ メニューiframeアクセスエラー: {frame_error}")
                     return False
-                
-                await log_menu.click()
-                await page.wait_for_load_state('networkidle', timeout=10000)
                 
                 print("📋 ステップ5: システムイベントメニューを選択中...")
                 
-                # システムイベントメニューを探す
+                # システムイベントメニューを探す（iframe内で検索）
                 system_event_selectors = [
+                    'span.label:has-text("システムイベント")',
+                    'span[op="12015"]',
+                    'li[op="12015"]',
+                    'span.label[op="12015"]',
                     'a:has-text("システムイベント")',
                     'a[href*="system"]',
                     'a[href*="event"]',
@@ -396,8 +460,9 @@ class ApexOneLogChecker:
                 system_event_menu = None
                 for selector in system_event_selectors:
                     try:
-                        system_event_menu = await page.wait_for_selector(selector, timeout=5000)
+                        system_event_menu = await frame.wait_for_selector(selector, timeout=5000)
                         if system_event_menu:
+                            print(f"✅ システムイベントメニューを発見: {selector}")
                             break
                     except:
                         continue
@@ -406,28 +471,106 @@ class ApexOneLogChecker:
                     print("❌ システムイベントメニューが見つかりません")
                     return False
                 
+                print("📋 ステップ5a: システムイベントメニューをクリック中...")
                 await system_event_menu.click()
-                await page.wait_for_load_state('networkidle', timeout=15000)
+                await frame.wait_for_load_state('networkidle', timeout=15000)
+                print("✅ システムイベントメニュークリック完了")
                 
-                print("📋 ステップ6: システムイベントログを取得中...")
+                # ページ遷移を待機
+                print("📋 ステップ5b: ページ遷移を待機中...")
+                await asyncio.sleep(3)
                 
-                # ログテーブルを探す
-                log_table_selectors = [
-                    'table',
-                    '.log-table',
-                    '.event-table',
-                    'div[class*="table"]',
-                    'div[class*="grid"]'
-                ]
+                # メインフレームの更新を待機
+                try:
+                    main_frame = await page.wait_for_selector('iframe[name="main"]', timeout=10000)
+                    if main_frame:
+                        main_frame_content = await main_frame.content_frame()
+                        if main_frame_content:
+                            # メインフレームのURLが変更されるまで待機
+                            max_wait = 30
+                            for i in range(max_wait):
+                                current_url = main_frame_content.url
+                                if "system" in current_url or "event" in current_url or "12015" in current_url:
+                                    print(f"✅ システムイベントページに遷移しました: {current_url}")
+                                    break
+                                await asyncio.sleep(1)
+                            else:
+                                print(f"⚠️ ページ遷移が確認できません。現在のURL: {current_url}")
+                except Exception as wait_error:
+                    print(f"⚠️ ページ遷移待機エラー: {wait_error}")
                 
-                log_table = None
-                for selector in log_table_selectors:
-                    try:
-                        log_table = await page.wait_for_selector(selector, timeout=10000)
-                        if log_table:
-                            break
-                    except:
-                        continue
+                print("📋 ステップ6: システムイベントページの読み込みを待機中...")
+                await asyncio.sleep(10)  # ページ遷移を待機（時間を延長）
+                
+                # メインフレームのURLを確認（メインのページ内で検索）
+                try:
+                    # メインフレームを探す（複数のセレクターを試す）
+                    main_frame_selectors = [
+                        'iframe[name="main"]',
+                        'iframe[id="main"]',
+                        'iframe[src*="main"]',
+                        'iframe'
+                    ]
+                    
+                    main_frame = None
+                    for selector in main_frame_selectors:
+                        try:
+                            main_frame = await page.wait_for_selector(selector, timeout=15000)
+                            if main_frame:
+                                print(f"✅ メインフレームを発見: {selector}")
+                                break
+                        except:
+                            continue
+                    if main_frame:
+                        main_frame_content = await main_frame.content_frame()
+                        if main_frame_content:
+                            main_url = main_frame_content.url
+                            print(f"📍 メインフレームのURL: {main_url}")
+                            
+                            # メインフレーム内のHTMLをデバッグ用に保存
+                            try:
+                                main_html = await main_frame_content.content()
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                with open(f"debug_main_frame_{timestamp}.html", "w", encoding="utf-8") as f:
+                                    f.write(main_html)
+                                print(f"📄 メインフレームのHTMLを保存: debug_main_frame_{timestamp}.html")
+                            except Exception as main_debug_error:
+                                print(f"⚠️ メインフレームHTML保存エラー: {main_debug_error}")
+                            
+                            print("📋 ステップ6a: システムイベントログを取得中...")
+                            
+                            # ログテーブルを探す（メインフレーム内で検索）
+                            log_table_selectors = [
+                                'table',
+                                '.log-table',
+                                '.event-table',
+                                'div[class*="table"]',
+                                'div[class*="grid"]',
+                                'table[class*="log"]',
+                                'table[class*="event"]',
+                                '.data-table',
+                                '.result-table'
+                            ]
+                            
+                            log_table = None
+                            for selector in log_table_selectors:
+                                try:
+                                    log_table = await main_frame_content.wait_for_selector(selector, timeout=10000)
+                                    if log_table:
+                                        print(f"✅ ログテーブルを発見: {selector}")
+                                        break
+                                except:
+                                    continue
+                        else:
+                            print("❌ メインフレームコンテンツの取得に失敗しました")
+                            return False
+                    else:
+                        print("❌ メインフレームが見つかりません")
+                        return False
+                        
+                except Exception as main_frame_error:
+                    print(f"❌ メインフレームアクセスエラー: {main_frame_error}")
+                    return False
                 
                 if not log_table:
                     print("❌ ログテーブルが見つかりません")
@@ -451,10 +594,10 @@ class ApexOneLogChecker:
                         # ログに記録
                         self.log_event(f"最新システムイベントログ取得: {row_text[:100]}...")
                         
-                        # スクリーンショットを保存
+                        # スクリーンショットを保存（メインフレーム内）
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         screenshot_path = f"system_event_log_{timestamp}.png"
-                        await page.screenshot(path=screenshot_path)
+                        await main_frame_content.screenshot(path=screenshot_path)
                         print(f"📸 スクリーンショットを保存: {screenshot_path}")
                         
                         return True
