@@ -502,74 +502,104 @@ class ApexOneLogChecker:
                 print("📋 ステップ6: システムイベントページの読み込みを待機中...")
                 await asyncio.sleep(10)  # ページ遷移を待機（時間を延長）
                 
-                # メインフレームのURLを確認（メインのページ内で検索）
+                # 利用可能なフレームを確認
                 try:
-                    # メインフレームを探す（複数のセレクターを試す）
-                    main_frame_selectors = [
+                    # 利用可能なフレームを探す
+                    frame_selectors = [
                         'iframe[name="main"]',
                         'iframe[id="main"]',
+                        'iframe[name="osce_top"]',
+                        'iframe[id="osce_top"]',
                         'iframe[src*="main"]',
+                        'iframe[src*="osce"]',
                         'iframe'
                     ]
                     
-                    main_frame = None
-                    for selector in main_frame_selectors:
+                    available_frames = []
+                    for selector in frame_selectors:
                         try:
-                            main_frame = await page.wait_for_selector(selector, timeout=15000)
-                            if main_frame:
-                                print(f"✅ メインフレームを発見: {selector}")
+                            frame = await page.wait_for_selector(selector, timeout=5000)
+                            if frame:
+                                frame_content = await frame.content_frame()
+                                if frame_content:
+                                    frame_url = frame_content.url
+                                    frame_name = await frame.get_attribute('name') or await frame.get_attribute('id') or 'unknown'
+                                    available_frames.append({
+                                        'selector': selector,
+                                        'name': frame_name,
+                                        'url': frame_url,
+                                        'content': frame_content
+                                    })
+                                    print(f"✅ フレームを発見: {frame_name} - {frame_url}")
+                        except:
+                            continue
+                    
+                    if not available_frames:
+                        print("❌ 利用可能なフレームが見つかりません")
+                        return False
+                    
+                    # システムイベントページを含むフレームを探す
+                    target_frame = None
+                    for frame_info in available_frames:
+                        frame_url = frame_info['url']
+                        if "system" in frame_url or "event" in frame_url or "12015" in frame_url:
+                            target_frame = frame_info
+                            print(f"✅ システムイベントページを含むフレームを発見: {frame_info['name']}")
+                            break
+                    
+                    # システムイベントページが見つからない場合は、osce_topフレームを試す
+                    if not target_frame:
+                        for frame_info in available_frames:
+                            if frame_info['name'] in ['osce_top', 'main']:
+                                target_frame = frame_info
+                                print(f"✅ 代替フレームを使用: {frame_info['name']}")
+                                break
+                    
+                    if not target_frame:
+                        print("❌ 適切なフレームが見つかりません")
+                        return False
+                    
+                    main_frame_content = target_frame['content']
+                    main_url = target_frame['url']
+                    print(f"📍 選択されたフレームのURL: {main_url}")
+                    # 選択されたフレーム内のHTMLをデバッグ用に保存
+                    try:
+                        main_html = await main_frame_content.content()
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        frame_name = target_frame['name']
+                        with open(f"debug_{frame_name}_frame_{timestamp}.html", "w", encoding="utf-8") as f:
+                            f.write(main_html)
+                        print(f"📄 {frame_name}フレームのHTMLを保存: debug_{frame_name}_frame_{timestamp}.html")
+                    except Exception as main_debug_error:
+                        print(f"⚠️ {frame_name}フレームHTML保存エラー: {main_debug_error}")
+                    
+                    print("📋 ステップ6a: システムイベントログを取得中...")
+                    
+                    # ログテーブルを探す（選択されたフレーム内で検索）
+                    log_table_selectors = [
+                        'table',
+                        '.log-table',
+                        '.event-table',
+                        'div[class*="table"]',
+                        'div[class*="grid"]',
+                        'table[class*="log"]',
+                        'table[class*="event"]',
+                        '.data-table',
+                        '.result-table'
+                    ]
+                    
+                    log_table = None
+                    for selector in log_table_selectors:
+                        try:
+                            log_table = await main_frame_content.wait_for_selector(selector, timeout=10000)
+                            if log_table:
+                                print(f"✅ ログテーブルを発見: {selector}")
                                 break
                         except:
                             continue
-                    if main_frame:
-                        main_frame_content = await main_frame.content_frame()
-                        if main_frame_content:
-                            main_url = main_frame_content.url
-                            print(f"📍 メインフレームのURL: {main_url}")
-                            
-                            # メインフレーム内のHTMLをデバッグ用に保存
-                            try:
-                                main_html = await main_frame_content.content()
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                with open(f"debug_main_frame_{timestamp}.html", "w", encoding="utf-8") as f:
-                                    f.write(main_html)
-                                print(f"📄 メインフレームのHTMLを保存: debug_main_frame_{timestamp}.html")
-                            except Exception as main_debug_error:
-                                print(f"⚠️ メインフレームHTML保存エラー: {main_debug_error}")
-                            
-                            print("📋 ステップ6a: システムイベントログを取得中...")
-                            
-                            # ログテーブルを探す（メインフレーム内で検索）
-                            log_table_selectors = [
-                                'table',
-                                '.log-table',
-                                '.event-table',
-                                'div[class*="table"]',
-                                'div[class*="grid"]',
-                                'table[class*="log"]',
-                                'table[class*="event"]',
-                                '.data-table',
-                                '.result-table'
-                            ]
-                            
-                            log_table = None
-                            for selector in log_table_selectors:
-                                try:
-                                    log_table = await main_frame_content.wait_for_selector(selector, timeout=10000)
-                                    if log_table:
-                                        print(f"✅ ログテーブルを発見: {selector}")
-                                        break
-                                except:
-                                    continue
-                        else:
-                            print("❌ メインフレームコンテンツの取得に失敗しました")
-                            return False
-                    else:
-                        print("❌ メインフレームが見つかりません")
-                        return False
                         
-                except Exception as main_frame_error:
-                    print(f"❌ メインフレームアクセスエラー: {main_frame_error}")
+                except Exception as frame_error:
+                    print(f"❌ フレームアクセスエラー: {frame_error}")
                     return False
                 
                 if not log_table:
