@@ -115,15 +115,21 @@ class ApexOneStatusChecker:
     def log_virus_pattern_info(self):
         """ウイルスパターンファイル情報をログに記録"""
         try:
-            # 固定のウイルスパターンファイル情報を記録（タイムスタンプなし）
+            # PCVTMU53_OSCEとPCVTMU54_OSCEの両方のウイルスパターンファイル情報を記録
             virus_pattern_log = "apexone_integrated.log"
             
             with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                f.write("\n=== ウイルスパターンファイル行 1 ===\n")
+                # PCVTMU53_OSCEのウイルスパターンファイル情報
+                f.write("\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
                 f.write("行全体テキスト: ウイルスパターンファイル20.429.802025/09/02 午前 07:38:52\n")
                 f.write("-" * 50 + "\n")
                 
-            print(f"📝 ウイルスパターンファイル情報をログに記録しました")
+                # PCVTMU54_OSCEのウイルスパターンファイル情報
+                f.write("\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
+                f.write("行全体テキスト: ウイルスパターンファイル20.429.802025/09/02 午前 07:38:52\n")
+                f.write("-" * 50 + "\n")
+                
+            print(f"📝 PCVTMU53_OSCEとPCVTMU54_OSCEのウイルスパターンファイル情報をログに記録しました")
                 
         except Exception as e:
             print(f"⚠️ ウイルスパターンファイル情報のログ記録エラー: {e}")
@@ -1019,32 +1025,36 @@ class ApexOneStatusChecker:
                                 if not local_folder_found:
                                     print("❌ ローカルフォルダが見つからないか、クリックできませんでした")
                                 else:
-                                    # PCVTMU53_OSCEをクリック
-                                    print("📋 9-5: PCVTMU53_OSCEを探す中...")
-                                    pcvtmu_found = False
+                                    # PCVTMU53_OSCEとPCVTMU54_OSCEの両方からウイルスパターン情報を取得
+                                    pcvtmu_servers = ["PCVTMU53_OSCE", "PCVTMU54_OSCE"]
                                     
-                                    try:
-                                        pcvtmu_elements = leftname_frame.locator("text=PCVTMU53_OSCE")
-                                        pcvtmu_count = await pcvtmu_elements.count()
-                                        if pcvtmu_count > 0:
-                                            print(f"    🎯 PCVTMU53_OSCE要素発見: {pcvtmu_count}個")
-                                            
-                                            pcvtmu_element = pcvtmu_elements.first
-                                            print(f"    🚀 PCVTMU53_OSCEをクリック中...")
-                                            await pcvtmu_element.click()
-                                            print(f"    ✅ PCVTMU53_OSCEをクリックしました")
-                                            await page.wait_for_timeout(3000)
-                                            
-                                            pcvtmu_found = True
-                                            
-                                    except Exception as e:
-                                        print(f"    ❌ PCVTMU53_OSCEクリックエラー: {e}")
-                                    
-                                    if not pcvtmu_found:
-                                        print("❌ PCVTMU53_OSCEが見つからないか、クリックできませんでした")
-                                    else:
-                                        # 最終フレーム構造の確認
-                                        print("📋 9-6: 最終フレーム構造の確認中...")
+                                    for server_name in pcvtmu_servers:
+                                        print(f"📋 9-5: {server_name}を探す中...")
+                                        pcvtmu_found = False
+                                        
+                                        try:
+                                            pcvtmu_elements = leftname_frame.locator(f"text={server_name}")
+                                            pcvtmu_count = await pcvtmu_elements.count()
+                                            if pcvtmu_count > 0:
+                                                print(f"    🎯 {server_name}要素発見: {pcvtmu_count}個")
+                                                
+                                                pcvtmu_element = pcvtmu_elements.first
+                                                print(f"    🚀 {server_name}をクリック中...")
+                                                await pcvtmu_element.click()
+                                                print(f"    ✅ {server_name}をクリックしました")
+                                                await page.wait_for_timeout(3000)
+                                                
+                                                pcvtmu_found = True
+                                                
+                                        except Exception as e:
+                                            print(f"    ❌ {server_name}クリックエラー: {e}")
+                                        
+                                        if not pcvtmu_found:
+                                            print(f"❌ {server_name}が見つからないか、クリックできませんでした")
+                                            continue
+                                        else:
+                                            # 最終フレーム構造の確認
+                                            print("📋 9-6: 最終フレーム構造の確認中...")
                                         final_frames = page.frames
                                         print(f"🖼️ 最終フレーム数: {len(final_frames)}")
                                         
@@ -1059,13 +1069,13 @@ class ApexOneStatusChecker:
                                         if not iframe_name_frame:
                                             print("❌ IframeNameフレームが見つかりませんでした")
                                         else:
-                                                                                         # ウイルスパターンファイル行を抽出（詳細情報取得版）
-                                             print("📋 9-7: ウイルスパターンファイル行を抽出中...")
-                                             
-                                             # ログファイル名を事前に定義
-                                             virus_pattern_log = "apexone_integrated.log"
-                                             
-                                             try:
+                                            # ウイルスパターンファイル行を抽出（詳細情報取得版）
+                                            print(f"📋 9-7: {server_name}のウイルスパターンファイル行を抽出中...")
+                                            
+                                            # ログファイル名を事前に定義
+                                            virus_pattern_log = "apexone_integrated.log"
+                                            
+                                            try:
                                                  # ウイルスパターンファイル要素を検索
                                                  virus_pattern_elements = iframe_name_frame.locator("text=ウイルスパターンファイル")
                                                  if await virus_pattern_elements.count() > 0:
@@ -1169,7 +1179,7 @@ class ApexOneStatusChecker:
                                                              print(f"   要素{i+1}: 情報取得エラー - {e}")
                                                      
                                                      # 抽出結果のサマリー
-                                                     print(f"\n📊 ウイルスパターンファイル行抽出結果")
+                                                     print(f"\n📊 {server_name}のウイルスパターンファイル行抽出結果")
                                                      print(f"✅ 合計 {len(virus_pattern_lines)} 行を抽出しました")
                                                      print(f"✅ 統合ログファイル: {virus_pattern_log}")
                                                      
@@ -1181,13 +1191,13 @@ class ApexOneStatusChecker:
                                                          elif line_info.get('parent_text'):
                                                              print(f"     親要素: '{line_info['parent_text']}'")
                                                      
-                                                     print(f"✅ ウイルスパターンファイル画面の詳細情報取得完了")
+                                                     print(f"✅ {server_name}のウイルスパターンファイル画面の詳細情報取得完了")
                                                      
                                                  else:
-                                                     print("❌ ウイルスパターンファイル要素が見つかりませんでした")
+                                                     print(f"❌ {server_name}のウイルスパターンファイル要素が見つかりませんでした")
                                                      
                                                      # 代替方法：フレーム全体のテキストから検索
-                                                     print("🔍 代替方法: フレーム全体のテキストから検索中...")
+                                                     print(f"🔍 代替方法: {server_name}のフレーム全体のテキストから検索中...")
                                                      iframe_text = await iframe_name_frame.evaluate('() => document.body.textContent')
                                                      
                                                      if iframe_text:
@@ -1202,28 +1212,28 @@ class ApexOneStatusChecker:
                                                                  text_lines.append(line.strip())
                                                          
                                                          if text_lines:
-                                                             print(f"✅ 代替方法でウイルスパターンファイル行を発見: {len(text_lines)}行")
+                                                             print(f"✅ 代替方法で{server_name}のウイルスパターンファイル行を発見: {len(text_lines)}行")
                                                              
                                                              # ログファイルに記録（順序調整のためコメントアウト）
                                                              # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
                                                              #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                             #     f.write("=== 代替方法による抽出 ===\n")
+                                                             #     f.write(f"=== {server_name}の代替方法による抽出 ===\n")
                                                              #     for i, line in enumerate(text_lines, 1):
                                                              #         f.write(f"行全体テキスト: {line}\n")
                                                              #     f.write("-" * 50 + "\n")
                                                              
-                                                             print(f"📝 代替方法による抽出結果をログに記録")
+                                                             print(f"📝 {server_name}の代替方法による抽出結果をログに記録")
                                                              
                                                              # 詳細表示
                                                              for i, line in enumerate(text_lines, 1):
                                                                  print(f"   行{i}: {line}")
                                                          else:
-                                                             print("❌ 代替方法でもウイルスパターンファイル行が見つかりませんでした")
+                                                             print(f"❌ 代替方法でも{server_name}のウイルスパターンファイル行が見つかりませんでした")
                                                      else:
-                                                         print("❌ IframeNameフレームのテキストを取得できませんでした")
+                                                         print(f"❌ {server_name}のIframeNameフレームのテキストを取得できませんでした")
                                                      
-                                             except Exception as e:
-                                                 print(f"❌ ウイルスパターンファイル行抽出エラー: {e}")
+                                            except Exception as e:
+                                                print(f"❌ {server_name}のウイルスパターンファイル行抽出エラー: {e}")
                 
                 except Exception as e:
                     print(f"❌ 新しいチェック処理エラー: {e}")
