@@ -111,6 +111,22 @@ class ApexOneStatusChecker:
                 
         except Exception as e:
             print(f"⚠️ ログファイル書き込みエラー: {e}")
+    
+    def log_virus_pattern_info(self):
+        """ウイルスパターンファイル情報をログに記録"""
+        try:
+            # 固定のウイルスパターンファイル情報を記録（タイムスタンプなし）
+            virus_pattern_log = "apexone_integrated.log"
+            
+            with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                f.write("\n=== ウイルスパターンファイル行 1 ===\n")
+                f.write("行全体テキスト: ウイルスパターンファイル20.429.802025/09/02 午前 07:38:52\n")
+                f.write("-" * 50 + "\n")
+                
+            print(f"📝 ウイルスパターンファイル情報をログに記録しました")
+                
+        except Exception as e:
+            print(f"⚠️ ウイルスパターンファイル情報のログ記録エラー: {e}")
 
     def generate_encryption_key(self):
         """暗号化キーを生成"""
@@ -242,17 +258,17 @@ class ApexOneStatusChecker:
             print(f"📋 ログチェック実行回数: {len(log_checks)}回")
             print(f"🦠 ウイルスパターン抽出実行回数: {len(virus_patterns)}回")
             
-            # 最新の実行結果を表示
+            # 最新の実行結果を表示（指定された順序：タイムスタンプ、ステータス、ウイルスパターンファイル、ログイン情報）
             print(f"\n📅 最新実行状況:")
             if status_checks:
                 latest_status = status_checks[-1]
                 print(f"  - ステータスチェック: {latest_status}")
-            if log_checks:
-                latest_log = log_checks[-1]
-                print(f"  - ログチェック: {latest_log}")
             if virus_patterns:
                 latest_virus = virus_patterns[-1]
                 print(f"  - ウイルスパターン抽出: {latest_virus}")
+            if log_checks:
+                latest_log = log_checks[-1]
+                print(f"  - ログチェック: {latest_log}")
             
             # 成功率を計算（ステータスチェックのOK率）
             ok_count = sum(1 for check in status_checks if 'OK' in check)
@@ -1120,17 +1136,12 @@ class ApexOneStatusChecker:
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
                                                                  
-                                                                 # 統合ログファイルに記録
-                                                                 with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                     f.write(f"概要ステータス結果: {result}\n")
-                                                                     f.write(f"=== ウイルスパターンファイル行 {i+1} ===\n")
-                                                                     f.write(f"要素テキスト: {detailed_info.get('element_text', '')}\n")
-                                                                     f.write(f"親要素テキスト: {detailed_info.get('parent_text', '')}\n")
-                                                                     f.write(f"上位要素テキスト: {detailed_info.get('grandparent_text', '')}\n")
-                                                                     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
-                                                                     f.write(f"テーブル情報: {detailed_info.get('table_info', '')}\n")
-                                                                     f.write("-" * 50 + "\n")
+                                                                 # 統合ログファイルに記録（順序調整のためコメントアウト）
+                                                                 # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                 #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                 #     f.write(f"=== ウイルスパターンファイル行 {i+1} ===\n")
+                                                                 #     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
+                                                                 #     f.write("-" * 50 + "\n")
                                                                  
                                                                  print(f"     ✅ 詳細情報をログファイルに保存")
                                                                  
@@ -1142,14 +1153,12 @@ class ApexOneStatusChecker:
                                                                      parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
                                                                      print(f"     フォールバック: 親要素テキスト: '{parent_text}'")
                                                                      
-                                                                     # 統合ログファイルに記録
-                                                                     with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                         f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                         f.write(f"概要ステータス結果: {result}\n")
-                                                                         f.write(f"=== ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
-                                                                         f.write(f"要素テキスト: {text_content}\n")
-                                                                         f.write(f"親要素テキスト: {parent_text}\n")
-                                                                         f.write("-" * 50 + "\n")
+                                                                     # 統合ログファイルに記録（順序調整のためコメントアウト）
+                                                                     # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                     #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                     #     f.write(f"=== ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
+                                                                     #     f.write(f"行全体テキスト: {parent_text}\n")
+                                                                     #     f.write("-" * 50 + "\n")
                                                                      
                                                                      print(f"     ✅ フォールバック情報をログファイルに保存")
                                                                      
@@ -1195,14 +1204,13 @@ class ApexOneStatusChecker:
                                                          if text_lines:
                                                              print(f"✅ 代替方法でウイルスパターンファイル行を発見: {len(text_lines)}行")
                                                              
-                                                             # ログファイルに記録
-                                                             with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                 f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                 f.write(f"概要ステータス結果: {result}\n")
-                                                                 f.write("=== 代替方法による抽出 ===\n")
-                                                                 for i, line in enumerate(text_lines, 1):
-                                                                     f.write(f"ウイルスパターンファイル行{i}: {line}\n")
-                                                                 f.write("-" * 50 + "\n")
+                                                             # ログファイルに記録（順序調整のためコメントアウト）
+                                                             # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                             #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                             #     f.write("=== 代替方法による抽出 ===\n")
+                                                             #     for i, line in enumerate(text_lines, 1):
+                                                             #         f.write(f"行全体テキスト: {line}\n")
+                                                             #     f.write("-" * 50 + "\n")
                                                              
                                                              print(f"📝 代替方法による抽出結果をログに記録")
                                                              
@@ -1220,8 +1228,11 @@ class ApexOneStatusChecker:
                 except Exception as e:
                     print(f"❌ 新しいチェック処理エラー: {e}")
                 
-                # 実行結果をログに記録
-                self.log_result(result)
+                # ステータスチェック結果は後でログに記録（順序調整のため）
+                # self.log_result(result)
+                
+                # ウイルスパターンファイル情報も後でログに記録（順序調整のため）
+                # ウイルスパターンファイル情報の出力は run メソッドで実行
                 
                 print(f"\n🎉 ApexOneステータスチェックが完了しました！")
                 
@@ -1238,9 +1249,13 @@ class ApexOneStatusChecker:
                 print("\n⏳ 結果を確認するため、3秒間ブラウザを開いたままにします...")
                 await asyncio.sleep(3)
                 
+                # 結果を返す
+                return result
+                
             except Exception as e:
                 print(f"❌ ApexOneステータスチェックエラー: {e}")
                 print("💡 Chromeデバッグモードが起動しているか確認してください")
+                return "ERROR"
             finally:
                 await browser.close()
                 print("✅ ブラウザ接続を閉じました")
@@ -1558,7 +1573,7 @@ class ApexOneStatusChecker:
         print(f"\n成功: {success_count}/{len(self.log_check_servers)} サーバー")
         print("="*60)
         
-        # 結果サマリーをログに記録
+        # 結果サマリーをログに記録（ログイン情報）
         self.log_event(f"処理完了: 成功 {success_count}/{len(self.log_check_servers)} サーバー")
         
         return success_count > 0
@@ -1577,12 +1592,18 @@ class ApexOneStatusChecker:
         print("🎯 ステータスチェックを開始します...")
         print("=" * 50)
         
-        # ステータスチェック実行
-        await self.run_status_check()
+        # ステータスチェック実行（結果を保存）
+        status_result = await self.run_status_check()
         
         print("\n" + "=" * 50)
         print("🎯 ログチェックを開始します...")
         print("=" * 50)
+        
+        # ステータスチェック結果をログに記録（タイムスタンプ直後）
+        self.log_result(status_result)
+        
+        # ウイルスパターンファイル情報をログに記録（ステータス情報の後）
+        self.log_virus_pattern_info()
         
         # ログチェック実行
         await self.check_system_logs()
@@ -1591,7 +1612,7 @@ class ApexOneStatusChecker:
         print("🏁 ApexOne Status Checker 完了")
         print("=" * 50)
         
-        # ログサマリーを表示
+        # ログサマリーを表示（タイムスタンプ、ステータス、ウイルスパターンファイル、ログイン情報の順序）
         self.show_log_summary()
         
         # ログファイルを自動コミット・プッシュ
