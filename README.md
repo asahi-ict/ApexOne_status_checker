@@ -65,16 +65,14 @@ py -m pip install -r requirements.txt
 ```
 ApexOne_status_checker/
 ├── ApexOne_status_checker.py    # メインスクリプト（統合版）
-├── ApexOne_log_checker.py       # ログチェッカー（新機能）
 ├── run_status_checker.bat       # 実行用バッチファイル
-├── run_log_checker.bat          # ログチェッカー実行用バッチ
 ├── setup_task_scheduler.ps1     # タスクスケジューラー設定スクリプト
 ├── requirements.txt             # 依存関係
-├── apexone_status_log.csv       # 実行ログ（自動生成）
 ├── apexone_integrated.log       # 統合ログファイル（最新）
-├── apexone_log_checker.log      # ログチェッカー実行ログ
 ├── secure_credentials.enc       # 暗号化された認証情報
-├── encryption_key.key           # 暗号化キー
+├── .gitignore                   # Git除外設定
+├── CONTRIBUTING.md              # コントリビューションガイド
+├── LICENSE                      # ライセンスファイル
 ├── タスクスケジューラー設定手順.md  # 設定手順書
 └── README.md                    # このファイル
 ```
@@ -87,47 +85,11 @@ ApexOne_status_checker/
 py ApexOne_status_checker.py
 ```
 
-### ログチェッカーの実行（新機能）
-
-```bash
-py ApexOne_log_checker.py
-```
-
-**初回実行時:**
-```
-🔐 初回アクセスのため、認証情報を入力してください
-==================================================
-ユーザー名: admin
-パスワード: ********
-🔐 認証情報を暗号化して保存しました
-```
-
-**次回実行時:**
-```
-🔓 保存された認証情報を復号化しました
-📋 ステップ1: OfficeScan管理コンソールにアクセス中...
-📋 ステップ2: ログイン情報を入力中...
-📋 ステップ3: ログイン処理中...
-📋 ステップ4: ログメニューにアクセス中...
-📋 ステップ5: システムイベントメニューを選択中...
-📋 ステップ6: システムイベントログを取得中...
-
-============================================================
-📊 最新のシステムイベントログ:
-============================================================
-2025/01/15 10:30:15 INFO システム起動完了
-============================================================
-📸 スクリーンショットを保存: system_event_log_20250115_103015.png
-```
-
 ### バッチファイルでの実行
 
 ```bash
 # ステータスチェッカー
 run_status_checker.bat
-
-# ログチェッカー
-run_log_checker.bat
 ```
 
 ## 判定ロジック
@@ -168,16 +130,22 @@ run_log_checker.bat
 
 実行時に以下のファイルが自動保存されます：
 
-- `apexone_status_check_[タイムスタンプ].png` - 最終画面のスクリーンショット
-- `apexone_status_check_[タイムスタンプ].html` - ページのHTML
-- `apexone_widget_content_[タイムスタンプ].html` - ウィジェットフレームのHTML
-- `apexone_frame_text_[タイムスタンプ].txt` - フレームの抽出テキスト
-- `apexone_status_log.csv` - 実行ログ（累積）
 - **`apexone_integrated.log`** - 統合ログファイル（最新の出力形式）
-- **`system_event_log_[タイムスタンプ].png`** - システムイベントログ画面のスクリーンショット
-- **`apexone_log_checker.log`** - ログチェッカー実行ログ
+  - ステータスチェック結果
+  - ウイルスパターンファイル情報
+  - ログイン情報
+  - 実行履歴と統計情報
 - **`secure_credentials.enc`** - 暗号化された認証情報
-- **`encryption_key.key`** - 暗号化キー
+- **`.gitignore`** - Git除外設定ファイル
+
+### 📋 統合ログファイルの内容
+
+`apexone_integrated.log`には以下の情報が含まれます：
+
+- **ステータスチェック履歴**: 各実行のステータス結果（OK/NG/ERROR）
+- **ウイルスパターンファイル抽出履歴**: ウイルスパターンファイルの詳細情報
+- **ログチェック履歴**: OfficeScanシステムイベントログの取得結果
+- **実行統計**: 成功率、実行回数などのサマリー情報
 
 ## セキュリティ機能
 
@@ -266,6 +234,8 @@ run_log_checker.bat
 - **統合ログファイルの改善**
 - **指定された順序でのログ出力実装**
   - タイムスタンプ → ステータス → ウイルスパターンファイル → ログイン情報
+- **ファイル構成の簡素化**
+- **不要なファイルの削除と整理**
 
 ## ライセンス
 
