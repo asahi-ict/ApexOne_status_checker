@@ -113,26 +113,135 @@ class ApexOneStatusChecker:
             print(f"⚠️ ログファイル書き込みエラー: {e}")
     
     def log_virus_pattern_info(self):
-        """ウイルスパターンファイル情報をログに記録"""
+        """ウイルスパターンファイル情報をログに記録（実際のデータから動的に取得）"""
         try:
-            # PCVTMU53_OSCEとPCVTMU54_OSCEの両方のウイルスパターンファイル情報を記録
+            # 実際のウイルスパターンファイル情報を動的に取得
             virus_pattern_log = "apexone_integrated.log"
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            # ログファイルから最新のウイルスパターンファイル情報を抽出
+            latest_virus_info = self.extract_latest_virus_pattern_info()
             
             with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                # PCVTMU53_OSCEのウイルスパターンファイル情報
-                f.write("\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
-                f.write("行全体テキスト: ウイルスパターンファイル20.429.802025/09/02 午前 07:38:52\n")
-                f.write("-" * 50 + "\n")
-                
-                # PCVTMU54_OSCEのウイルスパターンファイル情報
-                f.write("\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
-                f.write("行全体テキスト: ウイルスパターンファイル20.429.802025/09/02 午前 07:38:52\n")
-                f.write("-" * 50 + "\n")
-                
-            print(f"📝 PCVTMU53_OSCEとPCVTMU54_OSCEのウイルスパターンファイル情報をログに記録しました")
+                if latest_virus_info:
+                    # 実際に取得した情報を記録
+                    f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
+                    f.write(f"行全体テキスト: {latest_virus_info}\n")
+                    f.write(f"取得日時: {current_date}\n")
+                    f.write("-" * 50 + "\n")
+                    
+                    f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
+                    f.write(f"行全体テキスト: {latest_virus_info}\n")
+                    f.write(f"取得日時: {current_date}\n")
+                    f.write("-" * 50 + "\n")
+                    
+                    print(f"📝 実際のウイルスパターンファイル情報をログに記録しました")
+                    print(f"   取得した情報: {latest_virus_info}")
+                    print(f"   💡 パターンファイルは通常、数日おきに更新されます")
+                else:
+                    # フォールバック：デフォルト情報を記録
+                    f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
+                    f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
+                    f.write(f"取得日時: {current_date}\n")
+                    f.write("-" * 50 + "\n")
+                    
+                    f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
+                    f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
+                    f.write(f"取得日時: {current_date}\n")
+                    f.write("-" * 50 + "\n")
+                    
+                    print(f"⚠️ ウイルスパターンファイル情報を取得できませんでした")
                 
         except Exception as e:
             print(f"⚠️ ウイルスパターンファイル情報のログ記録エラー: {e}")
+    
+    def extract_latest_virus_pattern_info(self):
+        """ログファイルから最新のウイルスパターンファイル情報を抽出"""
+        try:
+            if not os.path.exists(self.log_file):
+                return None
+            
+            with open(self.log_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # ウイルスパターンファイルの行を検索
+            lines = content.split('\n')
+            virus_pattern_lines = []
+            
+            for line in lines:
+                if 'ウイルスパターンファイル' in line and '行全体テキスト:' in line:
+                    # 行全体テキストの部分を抽出
+                    if '行全体テキスト:' in line:
+                        virus_info = line.split('行全体テキスト:')[1].strip()
+                        virus_pattern_lines.append(virus_info)
+            
+            # 最新の情報を返す（最後に見つかったもの）
+            if virus_pattern_lines:
+                latest_info = virus_pattern_lines[-1]
+                
+                # 日付の検証を実行
+                date_validation = self.validate_virus_pattern_date(latest_info)
+                
+                print(f"🔍 最新のウイルスパターンファイル情報を発見: {latest_info}")
+                print(f"📅 日付検証結果: {date_validation}")
+                
+                return latest_info
+            else:
+                print("⚠️ ウイルスパターンファイル情報が見つかりませんでした")
+                return None
+                
+        except Exception as e:
+            print(f"⚠️ ウイルスパターンファイル情報抽出エラー: {e}")
+            return None
+    
+    def validate_virus_pattern_date(self, virus_info):
+        """ウイルスパターンファイルの日付が当日かどうかを検証"""
+        try:
+            import re
+            from datetime import datetime, timedelta
+            
+            # 日付パターンを検索（例: 2025/09/02 午前 07:38:52）
+            date_pattern = r'(\d{4})/(\d{2})/(\d{2})\s+(午前|午後)\s+(\d{2}):(\d{2}):(\d{2})'
+            match = re.search(date_pattern, virus_info)
+            
+            if match:
+                year, month, day, ampm, hour, minute, second = match.groups()
+                
+                # 午後時間の調整
+                hour = int(hour)
+                if ampm == '午後' and hour != 12:
+                    hour += 12
+                elif ampm == '午前' and hour == 12:
+                    hour = 0
+                
+                # 日付オブジェクトを作成
+                virus_date = datetime(int(year), int(month), int(day), hour, int(minute), int(second))
+                current_date = datetime.now()
+                
+                # 日付の差を計算
+                date_diff = current_date - virus_date
+                
+                print(f"📊 ウイルスパターンファイル日付: {virus_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"📊 現在日時: {current_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"📊 日付差: {date_diff.days}日 {date_diff.seconds//3600}時間")
+                
+                # パターンファイルの更新頻度を考慮した判定
+                # ウイルスパターンファイルは通常、数日おきに更新される
+                if date_diff.days == 0:
+                    return "✅ 当日の情報です"
+                elif date_diff.days <= 3:
+                    return f"✅ {date_diff.days}日前の情報（正常範囲内）"
+                elif date_diff.days <= 7:
+                    return f"⚠️ {date_diff.days}日前の情報（注意が必要）"
+                elif date_diff.days <= 14:
+                    return f"⚠️ {date_diff.days}日前の情報（更新が遅れている可能性）"
+                else:
+                    return f"❌ {date_diff.days}日前の古い情報（要確認）"
+            else:
+                return "❌ 日付パターンが見つかりませんでした"
+                
+        except Exception as e:
+            return f"❌ 日付検証エラー: {e}"
 
     def generate_encryption_key(self):
         """暗号化キーを生成"""
@@ -1146,12 +1255,12 @@ class ApexOneStatusChecker:
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
                                                                  
-                                                                 # 統合ログファイルに記録（順序調整のためコメントアウト）
-                                                                 # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                 #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                 #     f.write(f"=== ウイルスパターンファイル行 {i+1} ===\n")
-                                                                 #     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
-                                                                 #     f.write("-" * 50 + "\n")
+                                                                 # 統合ログファイルに記録（実際のデータを記録）
+                                                                 with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                     f.write(f"=== {server_name} ウイルスパターンファイル行 {i+1} ===\n")
+                                                                     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
+                                                                     f.write("-" * 50 + "\n")
                                                                  
                                                                  print(f"     ✅ 詳細情報をログファイルに保存")
                                                                  
@@ -1163,12 +1272,12 @@ class ApexOneStatusChecker:
                                                                      parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
                                                                      print(f"     フォールバック: 親要素テキスト: '{parent_text}'")
                                                                      
-                                                                     # 統合ログファイルに記録（順序調整のためコメントアウト）
-                                                                     # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                     #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                     #     f.write(f"=== ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
-                                                                     #     f.write(f"行全体テキスト: {parent_text}\n")
-                                                                     #     f.write("-" * 50 + "\n")
+                                                                     # 統合ログファイルに記録（実際のデータを記録）
+                                                                     with open(virus_pattern_log, 'a', encoding='utf-8') as f:
+                                                                         f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                                                                         f.write(f"=== {server_name} ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
+                                                                         f.write(f"行全体テキスト: {parent_text}\n")
+                                                                         f.write("-" * 50 + "\n")
                                                                      
                                                                      print(f"     ✅ フォールバック情報をログファイルに保存")
                                                                      
