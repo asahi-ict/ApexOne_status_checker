@@ -1255,14 +1255,8 @@ class ApexOneStatusChecker:
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
                                                                  
-                                                                 # 統合ログファイルに記録（実際のデータを記録）
-                                                                 with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                     f.write(f"=== {server_name} ウイルスパターンファイル行 {i+1} ===\n")
-                                                                     f.write(f"行全体テキスト: {detailed_info.get('row_text', '')}\n")
-                                                                     f.write("-" * 50 + "\n")
-                                                                 
-                                                                 print(f"     ✅ 詳細情報をログファイルに保存")
+                                                                 # ウイルスパターンファイル情報を取得（ログファイルには記録しない）
+                                                                 print(f"     ✅ 詳細情報を取得完了")
                                                                  
                                                              except Exception as e:
                                                                  print(f"     詳細情報取得エラー: {e}")
@@ -1272,14 +1266,8 @@ class ApexOneStatusChecker:
                                                                      parent_text = await element.evaluate('el => el.parentElement ? el.parentElement.textContent?.trim() || "" : ""')
                                                                      print(f"     フォールバック: 親要素テキスト: '{parent_text}'")
                                                                      
-                                                                     # 統合ログファイルに記録（実際のデータを記録）
-                                                                     with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                                         f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                                         f.write(f"=== {server_name} ウイルスパターンファイル行 {i+1} (フォールバック) ===\n")
-                                                                         f.write(f"行全体テキスト: {parent_text}\n")
-                                                                         f.write("-" * 50 + "\n")
-                                                                     
-                                                                     print(f"     ✅ フォールバック情報をログファイルに保存")
+                                                                     # フォールバック情報を取得（ログファイルには記録しない）
+                                                                     print(f"     ✅ フォールバック情報を取得完了")
                                                                      
                                                                  except Exception as e2:
                                                                      print(f"     フォールバック情報取得エラー: {e2}")
@@ -1290,7 +1278,6 @@ class ApexOneStatusChecker:
                                                      # 抽出結果のサマリー
                                                      print(f"\n📊 {server_name}のウイルスパターンファイル行抽出結果")
                                                      print(f"✅ 合計 {len(virus_pattern_lines)} 行を抽出しました")
-                                                     print(f"✅ 統合ログファイル: {virus_pattern_log}")
                                                      
                                                      # 詳細表示
                                                      for i, line_info in enumerate(virus_pattern_lines, 1):
@@ -1323,15 +1310,7 @@ class ApexOneStatusChecker:
                                                          if text_lines:
                                                              print(f"✅ 代替方法で{server_name}のウイルスパターンファイル行を発見: {len(text_lines)}行")
                                                              
-                                                             # ログファイルに記録（順序調整のためコメントアウト）
-                                                             # with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                                                             #     f.write(f"\n=== {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-                                                             #     f.write(f"=== {server_name}の代替方法による抽出 ===\n")
-                                                             #     for i, line in enumerate(text_lines, 1):
-                                                             #         f.write(f"行全体テキスト: {line}\n")
-                                                             #     f.write("-" * 50 + "\n")
-                                                             
-                                                             print(f"📝 {server_name}の代替方法による抽出結果をログに記録")
+                                                             print(f"📝 {server_name}の代替方法による抽出結果を取得")
                                                              
                                                              # 詳細表示
                                                              for i, line in enumerate(text_lines, 1):
