@@ -70,6 +70,10 @@ class ApexOneStatusChecker:
         self.key_file = "encryption_key.key"
         self.log_checker_file = "apexone_integrated.log"
         
+        # ウイルスパターンファイル情報を保存する変数
+        self.current_pcvtmu53_virus_info = None
+        self.current_pcvtmu54_virus_info = None
+        
     def log_result(self, result, details=""):
         """実行結果を統合ログファイルに記録"""
         try:
@@ -112,45 +116,95 @@ class ApexOneStatusChecker:
         except Exception as e:
             print(f"⚠️ ログファイル書き込みエラー: {e}")
     
-    def log_virus_pattern_info(self):
-        """ウイルスパターンファイル情報をログに記録（実際のデータから動的に取得）"""
+    def log_virus_pattern_info(self, pcvtmu53_info=None, pcvtmu54_info=None):
+        """ウイルスパターンファイル情報をログに記録（改善版：実際に取得した最新情報を使用）"""
         try:
-            # 実際のウイルスパターンファイル情報を動的に取得
             virus_pattern_log = "apexone_integrated.log"
             current_date = datetime.now().strftime("%Y-%m-%d")
             
-            # ログファイルから最新のウイルスパターンファイル情報を抽出
-            latest_virus_info = self.extract_latest_virus_pattern_info()
-            
             with open(virus_pattern_log, 'a', encoding='utf-8') as f:
-                if latest_virus_info:
-                    # 実際に取得した情報を記録
+                # PCVTMU53_OSCEの情報を記録
+                if pcvtmu53_info:
+                    date_validation_53 = self.validate_virus_pattern_date(pcvtmu53_info)
                     f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
-                    f.write(f"行全体テキスト: {latest_virus_info}\n")
+                    f.write(f"行全体テキスト: {pcvtmu53_info}\n")
                     f.write(f"取得日時: {current_date}\n")
+                    f.write(f"日付検証結果: {date_validation_53}\n")
                     f.write("-" * 50 + "\n")
                     
-                    f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
-                    f.write(f"行全体テキスト: {latest_virus_info}\n")
-                    f.write(f"取得日時: {current_date}\n")
-                    f.write("-" * 50 + "\n")
-                    
-                    print(f"📝 実際のウイルスパターンファイル情報をログに記録しました")
-                    print(f"   取得した情報: {latest_virus_info}")
-                    print(f"   💡 パターンファイルは通常、数日おきに更新されます")
+                    print(f"📝 PCVTMU53_OSCEのウイルスパターンファイル情報をログに記録しました")
+                    print(f"   取得した情報: {pcvtmu53_info}")
+                    print(f"   📅 日付検証結果: {date_validation_53}")
                 else:
-                    # フォールバック：デフォルト情報を記録
-                    f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
-                    f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
-                    f.write(f"取得日時: {current_date}\n")
-                    f.write("-" * 50 + "\n")
-                    
+                    # フォールバック：ログファイルから最新情報を取得
+                    latest_virus_info = self.extract_latest_virus_pattern_info()
+                    if latest_virus_info:
+                        date_validation = self.validate_virus_pattern_date(latest_virus_info)
+                        f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
+                        f.write(f"行全体テキスト: {latest_virus_info}\n")
+                        f.write(f"取得日時: {current_date}\n")
+                        f.write(f"日付検証結果: {date_validation}\n")
+                        f.write("-" * 50 + "\n")
+                        
+                        print(f"📝 PCVTMU53_OSCEのウイルスパターンファイル情報をログに記録しました（フォールバック）")
+                        print(f"   取得した情報: {latest_virus_info}")
+                        print(f"   📅 日付検証結果: {date_validation}")
+                    else:
+                        f.write(f"\n=== PCVTMU53_OSCE ウイルスパターンファイル行 1 ===\n")
+                        f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
+                        f.write(f"取得日時: {current_date}\n")
+                        f.write("日付検証結果: ❌ 情報取得失敗\n")
+                        f.write("-" * 50 + "\n")
+                        
+                        print(f"⚠️ PCVTMU53_OSCEのウイルスパターンファイル情報を取得できませんでした")
+                
+                # PCVTMU54_OSCEの情報を記録
+                if pcvtmu54_info:
+                    date_validation_54 = self.validate_virus_pattern_date(pcvtmu54_info)
                     f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
-                    f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
+                    f.write(f"行全体テキスト: {pcvtmu54_info}\n")
                     f.write(f"取得日時: {current_date}\n")
+                    f.write(f"日付検証結果: {date_validation_54}\n")
                     f.write("-" * 50 + "\n")
                     
-                    print(f"⚠️ ウイルスパターンファイル情報を取得できませんでした")
+                    print(f"📝 PCVTMU54_OSCEのウイルスパターンファイル情報をログに記録しました")
+                    print(f"   取得した情報: {pcvtmu54_info}")
+                    print(f"   📅 日付検証結果: {date_validation_54}")
+                else:
+                    # フォールバック：ログファイルから最新情報を取得
+                    latest_virus_info = self.extract_latest_virus_pattern_info()
+                    if latest_virus_info:
+                        date_validation = self.validate_virus_pattern_date(latest_virus_info)
+                        f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
+                        f.write(f"行全体テキスト: {latest_virus_info}\n")
+                        f.write(f"取得日時: {current_date}\n")
+                        f.write(f"日付検証結果: {date_validation}\n")
+                        f.write("-" * 50 + "\n")
+                        
+                        print(f"📝 PCVTMU54_OSCEのウイルスパターンファイル情報をログに記録しました（フォールバック）")
+                        print(f"   取得した情報: {latest_virus_info}")
+                        print(f"   📅 日付検証結果: {date_validation}")
+                    else:
+                        f.write(f"\n=== PCVTMU54_OSCE ウイルスパターンファイル行 1 ===\n")
+                        f.write("行全体テキスト: ウイルスパターンファイル情報を取得できませんでした\n")
+                        f.write(f"取得日時: {current_date}\n")
+                        f.write("日付検証結果: ❌ 情報取得失敗\n")
+                        f.write("-" * 50 + "\n")
+                        
+                        print(f"⚠️ PCVTMU54_OSCEのウイルスパターンファイル情報を取得できませんでした")
+                
+                # 警告レベルの判定（両方の情報がある場合）
+                if pcvtmu53_info and pcvtmu54_info:
+                    date_validation_53 = self.validate_virus_pattern_date(pcvtmu53_info)
+                    date_validation_54 = self.validate_virus_pattern_date(pcvtmu54_info)
+                    
+                    if "❌" in date_validation_53 or "🚨" in date_validation_53 or "❌" in date_validation_54 or "🚨" in date_validation_54:
+                        print(f"   🚨 警告: ウイルスパターンファイルが古い可能性があります")
+                        print(f"   💡 手動でApexOne管理コンソールからパターンファイルの更新を確認してください")
+                    elif "⚠️" in date_validation_53 or "⚠️" in date_validation_54:
+                        print(f"   ⚠️ 注意: ウイルスパターンファイルの更新が遅れている可能性があります")
+                    else:
+                        print(f"   ✅ ウイルスパターンファイルは正常な状態です")
                 
         except Exception as e:
             print(f"⚠️ ウイルスパターンファイル情報のログ記録エラー: {e}")
@@ -195,7 +249,7 @@ class ApexOneStatusChecker:
             return None
     
     def validate_virus_pattern_date(self, virus_info):
-        """ウイルスパターンファイルの日付が当日かどうかを検証"""
+        """ウイルスパターンファイルの日付が当日かどうかを検証（改善版）"""
         try:
             import re
             from datetime import datetime, timedelta
@@ -225,18 +279,18 @@ class ApexOneStatusChecker:
                 print(f"📊 現在日時: {current_date.strftime('%Y-%m-%d %H:%M:%S')}")
                 print(f"📊 日付差: {date_diff.days}日 {date_diff.seconds//3600}時間")
                 
-                # パターンファイルの更新頻度を考慮した判定
-                # ウイルスパターンファイルは通常、数日おきに更新される
-                if date_diff.days == 0:
-                    return "✅ 当日の情報です"
-                elif date_diff.days <= 3:
+                # パターンファイルの更新頻度を考慮した判定（現実的な基準）
+                # ウイルスパターンファイルは通常、2-3日おきに更新される
+                if date_diff.days <= 3:
                     return f"✅ {date_diff.days}日前の情報（正常範囲内）"
-                elif date_diff.days <= 7:
+                elif date_diff.days <= 5:
                     return f"⚠️ {date_diff.days}日前の情報（注意が必要）"
-                elif date_diff.days <= 14:
+                elif date_diff.days <= 7:
                     return f"⚠️ {date_diff.days}日前の情報（更新が遅れている可能性）"
+                elif date_diff.days <= 14:
+                    return f"❌ {date_diff.days}日前の古い情報（要確認・手動更新推奨）"
                 else:
-                    return f"❌ {date_diff.days}日前の古い情報（要確認）"
+                    return f"🚨 {date_diff.days}日前の非常に古い情報（緊急確認必要）"
             else:
                 return "❌ 日付パターンが見つかりませんでした"
                 
@@ -378,9 +432,26 @@ class ApexOneStatusChecker:
             if status_checks:
                 latest_status = status_checks[-1]
                 print(f"  - ステータスチェック: {latest_status}")
+            
+            # ウイルスパターンファイルの詳細情報を表示
             if virus_patterns:
                 latest_virus = virus_patterns[-1]
                 print(f"  - ウイルスパターン抽出: {latest_virus}")
+                
+                # 最新のウイルスパターンファイル情報を取得して日付検証
+                latest_virus_info = self.extract_latest_virus_pattern_info()
+                if latest_virus_info:
+                    date_validation = self.validate_virus_pattern_date(latest_virus_info)
+                    print(f"  - ウイルスパターン日付検証: {date_validation}")
+                    
+                    # 警告レベルの表示
+                    if "❌" in date_validation or "🚨" in date_validation:
+                        print(f"  🚨 ウイルスパターンファイル警告: 更新が遅れています")
+                    elif "⚠️" in date_validation:
+                        print(f"  ⚠️ ウイルスパターンファイル注意: 更新状況を確認してください")
+                    else:
+                        print(f"  ✅ ウイルスパターンファイル: 正常な状態です")
+            
             if log_checks:
                 latest_log = log_checks[-1]
                 print(f"  - ログチェック: {latest_log}")
@@ -1184,6 +1255,9 @@ class ApexOneStatusChecker:
                                             # ログファイル名を事前に定義
                                             virus_pattern_log = "apexone_integrated.log"
                                             
+                                            # 取得したウイルスパターンファイル情報を保存
+                                            current_virus_info = None
+                                            
                                             try:
                                                  # ウイルスパターンファイル要素を検索
                                                  virus_pattern_elements = iframe_name_frame.locator("text=ウイルスパターンファイル")
@@ -1254,6 +1328,16 @@ class ApexOneStatusChecker:
                                                                      'element_index': i
                                                                  }
                                                                  virus_pattern_lines.append(line_info)
+                                                                 
+                                                                 # 最新のウイルスパターンファイル情報を保存
+                                                                 if i == 0:  # 最初の要素（最新）を保存
+                                                                     current_virus_info = detailed_info.get('row_text', '') or detailed_info.get('grandparent_text', '')
+                                                                     
+                                                                     # サーバー別に情報を保存
+                                                                     if server_name == "PCVTMU53_OSCE":
+                                                                         self.current_pcvtmu53_virus_info = current_virus_info
+                                                                     elif server_name == "PCVTMU54_OSCE":
+                                                                         self.current_pcvtmu54_virus_info = current_virus_info
                                                                  
                                                                  # ウイルスパターンファイル情報を取得（ログファイルには記録しない）
                                                                  print(f"     ✅ 詳細情報を取得完了")
@@ -1701,7 +1785,7 @@ class ApexOneStatusChecker:
         self.log_result(status_result)
         
         # ウイルスパターンファイル情報をログに記録（ステータス情報の後）
-        self.log_virus_pattern_info()
+        self.log_virus_pattern_info(self.current_pcvtmu53_virus_info, self.current_pcvtmu54_virus_info)
         
         # ログチェック実行
         await self.check_system_logs()
